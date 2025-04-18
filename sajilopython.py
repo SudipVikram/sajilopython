@@ -19,6 +19,34 @@ GRAVITY = 1
 # Global flag for running state
 running = True
 
+class CreateToolTip(object):
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tipwindow = None
+        widget.bind("<Enter>", self.showtip)
+        widget.bind("<Leave>", self.hidetip)
+
+    def showtip(self, event=None):
+        if self.tipwindow or not self.text:
+            return
+        x, y, cx, cy = self.widget.bbox("insert")
+        x = x + self.widget.winfo_rootx() + 25
+        y = y + self.widget.winfo_rooty() + 20
+        self.tipwindow = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        label = tk.Label(tw, text=self.text, justify="left",
+                         background="#ffffe0", relief="solid", borderwidth=1,
+                         font=("tahoma", "8", "normal"))
+        label.pack(ipadx=1)
+
+    def hidetip(self, event=None):
+        if self.tipwindow:
+            self.tipwindow.destroy()
+            self.tipwindow = None
+
+
 # Bob Character Class
 class BobCharacter:
     def __init__(self):
@@ -180,6 +208,60 @@ def workbench():
     save_icon = PhotoImage(file="icons/save.png")
     load_icon = PhotoImage(file="icons/load.png")
     about_icon = PhotoImage(file="icons/about.png")
+    new_icon = PhotoImage(file="icons/new.png")
+    close_icon = PhotoImage(file="icons/close.png")
+    undo_icon = PhotoImage(file="icons/undo.png")
+    redo_icon = PhotoImage(file="icons/redo.png")
+
+    # Undo and Redo functions
+    def undo_action():
+        try:
+            editor.edit_undo()
+            update_status("Undo performed")
+        except:
+            pass
+
+    def redo_action():
+        try:
+            editor.edit_redo()
+            update_status("Redo performed")
+        except:
+            pass
+
+    # Buttons with padding and tooltip
+    undo_button = tk.Button(toolbar, image=undo_icon, command=undo_action, padx=5, pady=5)
+    undo_button.image = undo_icon
+    undo_button.pack(side="left", padx=2)
+    CreateToolTip(undo_button, "Undo (Ctrl+Z)")
+
+    redo_button = tk.Button(toolbar, image=redo_icon, command=redo_action, padx=5, pady=5)
+    redo_button.image = redo_icon
+    redo_button.pack(side="left", padx=2)
+    CreateToolTip(redo_button, "Redo (Ctrl+Y)")
+
+    # New File
+    def new_file():
+        editor.delete("1.0", "end")
+        update_status("New file created")
+
+    # Close File (clears editor and shell)
+    def close_file():
+        editor.delete("1.0", "end")
+        shell.configure(state="normal")
+        shell.delete("1.0", "end")
+        shell.configure(state="disabled")
+        update_status("File closed")
+
+    # New and Close buttons
+    new_button = tk.Button(toolbar, image=new_icon, command=new_file)
+    new_button.image = new_icon
+    new_button.pack(side="left", padx=2)
+    CreateToolTip(new_button, "New File (Ctrl+N)")
+
+    close_button = tk.Button(toolbar, image=close_icon, command=close_file)
+    close_button.image = close_icon
+    close_button.pack(side="left", padx=2)
+    CreateToolTip(close_button, "Close (Ctrl+Q)")
 
     # Save File
     def save_file():
@@ -188,6 +270,8 @@ def workbench():
         if file_path:
             with open(file_path, "w") as f:
                 f.write(editor.get("1.0", "end-1c"))
+                # update status
+                update_status("File saved successfully!")
 
     # Load File
     def load_file():
@@ -197,6 +281,8 @@ def workbench():
                 content = f.read()
             editor.delete("1.0", "end")
             editor.insert("1.0", content)
+            # update status
+            update_status("File saved successfully!")
 
     # About Dialog
     def show_about():
@@ -206,14 +292,17 @@ def workbench():
     save_button = tk.Button(toolbar, image=save_icon, command=save_file)
     save_button.image = save_icon
     save_button.pack(side="left", padx=2)
+    CreateToolTip(save_button, "Save File (Ctrl+S)")
 
     load_button = tk.Button(toolbar, image=load_icon, command=load_file)
     load_button.image = load_icon
     load_button.pack(side="left", padx=2)
+    CreateToolTip(load_button, "Open File (Ctrl+O)")
 
     about_button = tk.Button(toolbar, image=about_icon, command=show_about)
     about_button.image = about_icon
     about_button.pack(side="left", padx=2)
+    CreateToolTip(about_button, "About")
 
     # Dropdown menu
     menu_button = tk.Menubutton(toolbar, text="Options", relief="raised", bg="#ddd")
@@ -241,6 +330,15 @@ def workbench():
     menu.add_command(label="Settings", command=lambda: print("Settings clicked"))
 
     menu_button.pack(side="right", padx=5)
+
+    # Shortcut bindings
+    root.bind("<Control-s>", lambda event: save_file())
+    root.bind("<Control-o>", lambda event: open_file())
+    root.bind("<Control-n>", lambda event: new_file())
+    root.bind("<Control-w>", lambda event: close_file())
+    root.bind("<Control-z>", lambda event: undo_action())
+    root.bind("<Control-y>", lambda event: redo_action())
+    root.bind("<F5>", lambda event: run_code(editor, shell))
 
     def on_closing():
         global running
@@ -281,13 +379,21 @@ def workbench():
     shell.pack(fill='both', expand=False)
 
     # Run Button
-    # Run Button with play icon
-    run_icon = PhotoImage(file="icons/play.png")  # Make sure this path is correct
-    run_button = tk.Button(toolbar, text=" Run", image=run_icon, compound="left",
-                           bg="#28a745", fg="white", font=("Helvetica", 10, "bold"),
-                           activebackground="#218838", command=lambda: run_code(editor, shell))
-    run_button.image = run_icon  # keep a reference
-    run_button.pack(side="left", padx=5, pady=2)
+    # Run Button (without green background)
+    run_icon = PhotoImage(file="icons/play.png")
+    run_button = tk.Button(root, text=" Run", image=run_icon, compound="left",
+                           font=("Helvetica", 10, "bold"),
+                           command=lambda: run_code(editor, shell))
+    run_button.image = run_icon
+    run_button.pack(pady=4)
+
+    # Status Bar
+    status_var = tk.StringVar()
+    status_bar = tk.Label(root, textvariable=status_var, bd=1, relief=tk.SUNKEN, anchor="w")
+    status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+
+    def update_status(message):
+        status_var.set(message)
 
     # Start Pygame in background
     threading.Thread(target=playground, daemon=True).start()
