@@ -319,7 +319,7 @@ def workbench():
     close_button = tk.Button(toolbar, image=close_icon, command=close_file)
     close_button.image = close_icon
     close_button.pack(side="left", padx=2)
-    CreateToolTip(close_button, "Close (Ctrl+Q)")
+    CreateToolTip(close_button, "Close File(Ctrl+Q)")
 
     # about button
     about_button = tk.Button(toolbar, image=about_icon, command=show_about)
@@ -340,13 +340,13 @@ def workbench():
     menu_button.pack(side="right", padx=5)
 
     # Shortcut bindings
-    root.bind("<Control-s>", lambda event: save_file())
-    root.bind("<Control-o>", lambda event: load_file())
-    root.bind("<Control-n>", lambda event: new_file())
-    root.bind("<Control-w>", lambda event: close_file())
-    root.bind("<Control-z>", lambda event: undo_action())
-    root.bind("<Control-y>", lambda event: redo_action())
-    root.bind("<F5>", lambda event: run_code(editor, shell))
+    root.bind_all("<Control-s>", lambda event: save_file())
+    root.bind_all("<Control-o>", lambda event: load_file())
+    root.bind_all("<Control-n>", lambda event: new_file())
+    root.bind_all("<Control-w>", lambda event: close_file())
+    root.bind_all("<Control-z>", lambda event: undo_action())
+    root.bind_all("<Control-y>", lambda event: redo_action())
+    root.bind_all("<F5>", lambda event: run_code(editor, shell))
 
     def on_closing():
         global running
@@ -361,7 +361,7 @@ def workbench():
     editor_frame.pack(fill="both", expand=True)
 
     # Editor
-    editor = scrolledtext.ScrolledText(editor_frame, height=15, width=50, font=("Helvetica", 14))
+    editor = scrolledtext.ScrolledText(editor_frame, height=15, width=50, undo=True, wrap="none", font=("Helvetica", 14))
     editor.configure(insertbackground="black", insertwidth=2)
     editor.pack(side="right", fill="both", expand=True)
 
@@ -369,7 +369,7 @@ def workbench():
     editor.tag_configure("string", foreground="green")
     editor.tag_configure("comment", foreground="gray")
     editor.tag_configure("number", foreground="purple")
-    editor.tag_configure("current_line", background="#e8e815")
+    editor.tag_configure("current_line", background="#f5eb5f")
 
     def highlight_current_line(event=None):
         editor.tag_remove("current_line", "1.0", "end")
