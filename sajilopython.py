@@ -200,20 +200,8 @@ def workbench():
     root = tk.Tk()
     root.title("Sajilo Python Workbench")
 
-    # Toolbar
-    toolbar = tk.Frame(root, bg="#f0f0f0", height=30)
-    toolbar.pack(fill="x")
-
-    # Save and Load icons
-    save_icon = PhotoImage(file="icons/save.png")
-    load_icon = PhotoImage(file="icons/load.png")
-    about_icon = PhotoImage(file="icons/about.png")
-    new_icon = PhotoImage(file="icons/new.png")
-    close_icon = PhotoImage(file="icons/close.png")
-    undo_icon = PhotoImage(file="icons/undo.png")
-    redo_icon = PhotoImage(file="icons/redo.png")
-
-    # Undo and Redo functions
+    # functions for icon presses
+    # undo action
     def undo_action():
         try:
             editor.edit_undo()
@@ -221,23 +209,13 @@ def workbench():
         except:
             pass
 
+    # redo action
     def redo_action():
         try:
             editor.edit_redo()
             update_status("Redo performed")
         except:
             pass
-
-    # Buttons with padding and tooltip
-    undo_button = tk.Button(toolbar, image=undo_icon, command=undo_action, padx=5, pady=5)
-    undo_button.image = undo_icon
-    undo_button.pack(side="left", padx=2)
-    CreateToolTip(undo_button, "Undo (Ctrl+Z)")
-
-    redo_button = tk.Button(toolbar, image=redo_icon, command=redo_action, padx=5, pady=5)
-    redo_button.image = redo_icon
-    redo_button.pack(side="left", padx=2)
-    CreateToolTip(redo_button, "Redo (Ctrl+Y)")
 
     # New File
     def new_file():
@@ -251,17 +229,6 @@ def workbench():
         shell.delete("1.0", "end")
         shell.configure(state="disabled")
         update_status("File closed")
-
-    # New and Close buttons
-    new_button = tk.Button(toolbar, image=new_icon, command=new_file)
-    new_button.image = new_icon
-    new_button.pack(side="left", padx=2)
-    CreateToolTip(new_button, "New File (Ctrl+N)")
-
-    close_button = tk.Button(toolbar, image=close_icon, command=close_file)
-    close_button.image = close_icon
-    close_button.pack(side="left", padx=2)
-    CreateToolTip(close_button, "Close (Ctrl+Q)")
 
     # Save File
     def save_file():
@@ -282,33 +249,13 @@ def workbench():
             editor.delete("1.0", "end")
             editor.insert("1.0", content)
             # update status
-            update_status("File saved successfully!")
+            update_status("File opened successfully!")
 
     # About Dialog
     def show_about():
         tk.messagebox.showinfo("About", "Sajilo Python Workbench\nCreated by Beyond Apogee")
 
-    # Toolbar Buttons
-    save_button = tk.Button(toolbar, image=save_icon, command=save_file)
-    save_button.image = save_icon
-    save_button.pack(side="left", padx=2)
-    CreateToolTip(save_button, "Save File (Ctrl+S)")
-
-    load_button = tk.Button(toolbar, image=load_icon, command=load_file)
-    load_button.image = load_icon
-    load_button.pack(side="left", padx=2)
-    CreateToolTip(load_button, "Open File (Ctrl+O)")
-
-    about_button = tk.Button(toolbar, image=about_icon, command=show_about)
-    about_button.image = about_icon
-    about_button.pack(side="left", padx=2)
-    CreateToolTip(about_button, "About")
-
-    # Dropdown menu
-    menu_button = tk.Menubutton(toolbar, text="Options", relief="raised", bg="#ddd")
-    menu = Menu(menu_button, tearoff=0)
-    menu_button.config(menu=menu)
-
+    # Working with Gravity
     # Variables for toggles
     gravity_on = tk.BooleanVar(value=True)
     pygame_window_open = tk.BooleanVar(value=True)
@@ -324,6 +271,67 @@ def workbench():
         else:
             threading.Thread(target=playground, daemon=True).start()
 
+    # Toolbar
+    toolbar = tk.Frame(root, bg="#f0f0f0", height=30)
+    toolbar.pack(fill="x")
+
+    # working with toolbars, arranging icons
+    # Save and Load icons
+    new_icon = PhotoImage(file="icons/new.png")
+    undo_icon = PhotoImage(file="icons/undo.png")
+    redo_icon = PhotoImage(file="icons/redo.png")
+    load_icon = PhotoImage(file="icons/load.png")
+    save_icon = PhotoImage(file="icons/save.png")
+    close_icon = PhotoImage(file="icons/close.png")
+    about_icon = PhotoImage(file="icons/about.png")
+
+    # New button
+    new_button = tk.Button(toolbar, image=new_icon, command=new_file)
+    new_button.image = new_icon
+    new_button.pack(side="left", padx=2)
+    CreateToolTip(new_button, "New File (Ctrl+N)")
+
+    # undo button
+    undo_button = tk.Button(toolbar, image=undo_icon, command=undo_action, padx=5, pady=5)
+    undo_button.image = undo_icon
+    undo_button.pack(side="left", padx=2)
+    CreateToolTip(undo_button, "Undo (Ctrl+Z)")
+
+    # redo button
+    redo_button = tk.Button(toolbar, image=redo_icon, command=redo_action, padx=5, pady=5)
+    redo_button.image = redo_icon
+    redo_button.pack(side="left", padx=2)
+    CreateToolTip(redo_button, "Redo (Ctrl+Y)")
+
+    # load button
+    load_button = tk.Button(toolbar, image=load_icon, command=load_file)
+    load_button.image = load_icon
+    load_button.pack(side="left", padx=2)
+    CreateToolTip(load_button, "Open File (Ctrl+O)")
+
+    # save button
+    save_button = tk.Button(toolbar, image=save_icon, command=save_file)
+    save_button.image = save_icon
+    save_button.pack(side="left", padx=2)
+    CreateToolTip(save_button, "Save File (Ctrl+S)")
+
+    # close button
+    close_button = tk.Button(toolbar, image=close_icon, command=close_file)
+    close_button.image = close_icon
+    close_button.pack(side="left", padx=2)
+    CreateToolTip(close_button, "Close (Ctrl+Q)")
+
+    # about button
+    about_button = tk.Button(toolbar, image=about_icon, command=show_about)
+    about_button.image = about_icon
+    about_button.pack(side="left", padx=2)
+    CreateToolTip(about_button, "About")
+
+    # Dropdown menu
+    menu_button = tk.Menubutton(toolbar, text="Options", relief="raised", bg="#ddd")
+    menu = Menu(menu_button, tearoff=0)
+    menu_button.config(menu=menu)
+
     menu.add_checkbutton(label="Gravity ON/OFF", variable=gravity_on, command=toggle_gravity)
     menu.add_command(label="Close Pygame Window", command=toggle_pygame)
     menu.add_separator()
@@ -333,7 +341,7 @@ def workbench():
 
     # Shortcut bindings
     root.bind("<Control-s>", lambda event: save_file())
-    root.bind("<Control-o>", lambda event: open_file())
+    root.bind("<Control-o>", lambda event: load_file())
     root.bind("<Control-n>", lambda event: new_file())
     root.bind("<Control-w>", lambda event: close_file())
     root.bind("<Control-z>", lambda event: undo_action())
