@@ -21,16 +21,44 @@ GRAVITY = 1
 
 # Global theme state
 config_path = "config.json"
+
 def load_config():
-    if os.path.exists(config_path):
-        with open(config_path, "r") as f:
-            return json.load(f)
-    return {
+    default_config = {
         "theme_mode": "light",
         "editor_font_family": "Comic Sans MS",
         "editor_font_size": 14,
-        "editor_font_color": "black"
+        "editor_font_color": "black",
+        "bg_color": "#f5f5f5",
+        "fg_color": "black",
+        "insert_bg": "black",
+        "shell_bg": "black",
+        "shell_fg": "white",
+        "highlight_bg": "#fffacd",
+        "line_bg": "#e6f3ff"
     }
+
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r") as f:
+                loaded_config = json.load(f)
+                # Merge with defaults in case new settings were added
+                return {**default_config, **loaded_config}
+        except:
+            return default_config
+    return default_config
+
+config = load_config()
+theme_mode = config["theme_mode"]
+editor_font_family = config["editor_font_family"]
+editor_font_size = config["editor_font_size"]
+editor_font_color = config["editor_font_color"]
+bg_color = config["bg_color"]
+fg_color = config["fg_color"]
+insert_bg = config["insert_bg"]
+shell_bg = config["shell_bg"]
+shell_fg = config["shell_fg"]
+highlight_bg = config["highlight_bg"]
+line_bg = config["line_bg"]
 
 def save_config():
     with open(config_path, "w") as f:
@@ -38,7 +66,14 @@ def save_config():
             "theme_mode": theme_mode,
             "editor_font_family": editor_font_family,
             "editor_font_size": editor_font_size,
-            "editor_font_color": editor_font_color
+            "editor_font_color": editor_font_color,
+            "bg_color": bg_color,
+            "fg_color": fg_color,
+            "insert_bg": insert_bg,
+            "shell_bg": shell_bg,
+            "shell_fg": shell_fg,
+            "highlight_bg": highlight_bg,
+            "line_bg": line_bg
         }, f)
 
 config = load_config()
@@ -604,9 +639,30 @@ def workbench():
             except Exception as e:
                 status_var.set(f"Error: {str(e)}")
 
+    def reset_to_default():
+        global theme_mode, editor_font_family, editor_font_size, editor_font_color
+        global bg_color, fg_color, insert_bg, shell_bg, shell_fg, highlight_bg, line_bg
+
+        default_config = load_config()  # This will return defaults
+        theme_mode = default_config["theme_mode"]
+        editor_font_family = default_config["editor_font_family"]
+        editor_font_size = default_config["editor_font_size"]
+        editor_font_color = default_config["editor_font_color"]
+        bg_color = default_config["bg_color"]
+        fg_color = default_config["fg_color"]
+        insert_bg = default_config["insert_bg"]
+        shell_bg = default_config["shell_bg"]
+        shell_fg = default_config["shell_fg"]
+        highlight_bg = default_config["highlight_bg"]
+        line_bg = default_config["line_bg"]
+
+        apply_theme()
+        save_config()
+        messagebox.showinfo("Reset Complete", "All settings have been reset to defaults")
+
     def open_settings():
         global editor_font_family, editor_font_size, editor_font_color, theme_mode, settings_win
-        global editor_font_family, editor_font_size, editor_font_color, settings_win
+        global editor_font_family, editor_font_size, editor_font_color, settings_win, font_family_var, font_size_var
 
         if settings_win and tk.Toplevel.winfo_exists(settings_win):
             settings_win.lift()
@@ -614,7 +670,7 @@ def workbench():
 
         settings_win = tk.Toplevel()
         settings_win.title("Settings")
-        settings_win.geometry("400x350")
+        settings_win.geometry("400x450")
         settings_win.resizable(False, False)
 
         def choose_font_color():
@@ -656,6 +712,9 @@ def workbench():
         tk.Label(settings_win,
                  text=f"Current Font: {editor_font_family}, Size: {editor_font_size}, Color: {editor_font_color}",
                  font=("Comic Sans MS", 10), fg="gray").pack(pady=5)
+        # Add reset button at the bottom
+        tk.Button(settings_win, text="🔄 Reset to Defaults", command=reset_to_default,
+                  font=("Comic Sans MS", 11), bg="#FF9800", fg="white").pack(pady=10)
 
     def set_theme_mode(mode):
         global theme_mode
@@ -664,24 +723,14 @@ def workbench():
         save_config()
 
     def apply_theme():
-        dark = theme_mode == "dark"
-        colors = {
-            "bg": "#1e1e1e" if dark else "white",
-            "fg": "white" if dark else editor_font_color,
-            "insertbg": "white" if dark else editor_font_color,
-            "shell_bg": "#2d2d2d" if dark else "black",
-            "shell_fg": "#d4d4d4" if dark else "white",
-            "highlight_bg": "#2a2a2a" if dark else "#fffacd",
-            "line_bg": "#2a2a2a" if dark else "#e0e0af"
-        }
         for tab_data in tabs.values():
             editor = tab_data["editor"]
-            editor.config(bg=colors["bg"], fg=colors["fg"], insertbackground=colors["insertbg"],
+            editor.config(bg=bg_color, fg=fg_color, insertbackground=insert_bg,
                           font=(editor_font_family, editor_font_size))
-            editor.tag_configure("current_line", background=colors["highlight_bg"])
+            editor.tag_configure("current_line", background=highlight_bg)
             if "line_numbers" in tab_data:
-                tab_data["line_numbers"].config(bg=colors["line_bg"])
-        shell.config(bg=colors["shell_bg"], fg=colors["shell_fg"], insertbackground=colors["insertbg"])
+                tab_data["line_numbers"].config(bg=line_bg)
+        shell.config(bg=shell_bg, fg=shell_fg, insertbackground=insert_bg)
 
     # Toolbar
     toolbar = tk.Frame(root, bg="#c0e0ff", height=40)
