@@ -8,6 +8,7 @@ import os
 import ctypes
 import io
 import shutil
+import json
 
 # Initialize pygame
 pygame.init()
@@ -18,10 +19,34 @@ BG_COLOR = (0, 0, 0)
 GRAVITY = 1
 
 # Global theme state
-theme_mode = "light"
-editor_font_family = "Comic Sans MS"
-editor_font_size = 14
-editor_font_color = "black"
+config_path = "config.json"
+def load_config():
+    if os.path.exists(config_path):
+        with open(config_path, "r") as f:
+            return json.load(f)
+    return {
+        "theme_mode": "light",
+        "editor_font_family": "Comic Sans MS",
+        "editor_font_size": 14,
+        "editor_font_color": "black"
+    }
+
+def save_config():
+    with open(config_path, "w") as f:
+        json.dump({
+            "theme_mode": theme_mode,
+            "editor_font_family": editor_font_family,
+            "editor_font_size": editor_font_size,
+            "editor_font_color": editor_font_color
+        }, f)
+
+config = load_config()
+theme_mode = config["theme_mode"]
+editor_font_family = config["editor_font_family"]
+editor_font_size = config["editor_font_size"]
+editor_font_color = config["editor_font_color"]
+
+settings_win = None
 
 class BobCharacter:
     def __init__(self):
@@ -515,29 +540,39 @@ def workbench():
                 status_var.set(f"Error: {str(e)}")
 
     def open_settings():
-        global editor_font_family, editor_font_size, editor_font_color
+        global editor_font_family, editor_font_size, editor_font_color, settings_win
+
+        if settings_win and tk.Toplevel.winfo_exists(settings_win):
+            settings_win.lift()
+            return
 
         settings_win = tk.Toplevel()
         settings_win.title("Settings")
         settings_win.geometry("350x300")
+        settings_win.resizable(False, False)
 
         def toggle_theme():
             global theme_mode
             theme_mode = "dark" if theme_var.get() else "light"
             apply_theme()
+            save_config()
 
         def choose_font_color():
-            global editor_font_color
-            color = colorchooser.askcolor(title="Choose Font Color")
+            color_frame = tk.Frame(settings_win)
+            color_frame.pack(pady=5)
+            color = colorchooser.askcolor(title="Choose Font Color", parent=settings_win)
             if color[1]:
+                global editor_font_color
                 editor_font_color = color[1]
                 apply_theme()
+                save_config()
 
         def apply_font_settings():
             global editor_font_family, editor_font_size
             editor_font_family = font_family_var.get()
             editor_font_size = int(font_size_var.get())
             apply_theme()
+            save_config()
 
         theme_var = tk.BooleanVar(value=(theme_mode == "dark"))
         tk.Checkbutton(settings_win, text="Enable Dark Theme", variable=theme_var, command=toggle_theme,
@@ -545,14 +580,15 @@ def workbench():
 
         tk.Label(settings_win, text="Font Family:", font=("Comic Sans MS", 10)).pack()
         font_family_var = tk.StringVar(value=editor_font_family)
-        tk.OptionMenu(settings_win, font_family_var, *font.families()).pack()
+        tk.OptionMenu(settings_win, font_family_var, *sorted(font.families())).pack()
 
         tk.Label(settings_win, text="Font Size:", font=("Comic Sans MS", 10)).pack()
         font_size_var = tk.StringVar(value=str(editor_font_size))
-        tk.Entry(settings_win, textvariable=font_size_var).pack()
+        font_sizes = [str(s) for s in range(8, 33)]
+        tk.OptionMenu(settings_win, font_size_var, *font_sizes).pack()
 
         tk.Button(settings_win, text="Choose Font Color", command=choose_font_color).pack(pady=5)
-        tk.Button(settings_win, text="Apply Font Settings", command=apply_font_settings).pack(pady=10)
+        tk.Button(settings_win, text="✅ Apply Font Settings", command=apply_font_settings).pack(pady=10)
 
     def apply_theme():
         dark = theme_mode == "dark"
@@ -562,13 +598,16 @@ def workbench():
             "insertbg": "white" if dark else editor_font_color,
             "shell_bg": "#2d2d2d" if dark else "black",
             "shell_fg": "#d4d4d4" if dark else "white",
-            "highlight_bg": "#333333" if dark else "#fffacd"
+            "highlight_bg": "#2a2a2a" if dark else "#fffacd",
+            "line_bg": "#2a2a2a" if dark else "#e0e0af"
         }
         for tab_data in tabs.values():
             editor = tab_data["editor"]
             editor.config(bg=colors["bg"], fg=colors["fg"], insertbackground=colors["insertbg"],
                           font=(editor_font_family, editor_font_size))
             editor.tag_configure("current_line", background=colors["highlight_bg"])
+            if "line_numbers" in tab_data:
+                tab_data["line_numbers"].config(bg=colors["line_bg"])
         shell.config(bg=colors["shell_bg"], fg=colors["shell_fg"], insertbackground=colors["insertbg"])
 
     # Toolbar
