@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext, filedialog, Menu, messagebox, simpledialog, font
+from tkinter import ttk, scrolledtext, filedialog, Menu, messagebox, simpledialog, font, colorchooser
 import pygame
 import threading
 import re
@@ -19,6 +19,9 @@ GRAVITY = 1
 
 # Global theme state
 theme_mode = "light"
+editor_font_family = "Comic Sans MS"
+editor_font_size = 14
+editor_font_color = "black"
 
 class BobCharacter:
     def __init__(self):
@@ -512,31 +515,60 @@ def workbench():
                 status_var.set(f"Error: {str(e)}")
 
     def open_settings():
+        global editor_font_family, editor_font_size, editor_font_color
+
         settings_win = tk.Toplevel()
         settings_win.title("Settings")
-        settings_win.geometry("300x200")
+        settings_win.geometry("350x300")
 
         def toggle_theme():
             global theme_mode
             theme_mode = "dark" if theme_var.get() else "light"
             apply_theme()
 
+        def choose_font_color():
+            global editor_font_color
+            color = colorchooser.askcolor(title="Choose Font Color")
+            if color[1]:
+                editor_font_color = color[1]
+                apply_theme()
+
+        def apply_font_settings():
+            global editor_font_family, editor_font_size
+            editor_font_family = font_family_var.get()
+            editor_font_size = int(font_size_var.get())
+            apply_theme()
+
         theme_var = tk.BooleanVar(value=(theme_mode == "dark"))
         tk.Checkbutton(settings_win, text="Enable Dark Theme", variable=theme_var, command=toggle_theme,
-                       font=("Comic Sans MS", 12)).pack(pady=20)
+                       font=("Comic Sans MS", 12)).pack(pady=10)
+
+        tk.Label(settings_win, text="Font Family:", font=("Comic Sans MS", 10)).pack()
+        font_family_var = tk.StringVar(value=editor_font_family)
+        tk.OptionMenu(settings_win, font_family_var, *font.families()).pack()
+
+        tk.Label(settings_win, text="Font Size:", font=("Comic Sans MS", 10)).pack()
+        font_size_var = tk.StringVar(value=str(editor_font_size))
+        tk.Entry(settings_win, textvariable=font_size_var).pack()
+
+        tk.Button(settings_win, text="Choose Font Color", command=choose_font_color).pack(pady=5)
+        tk.Button(settings_win, text="Apply Font Settings", command=apply_font_settings).pack(pady=10)
 
     def apply_theme():
         dark = theme_mode == "dark"
         colors = {
             "bg": "#1e1e1e" if dark else "white",
-            "fg": "white" if dark else "black",
-            "insertbg": "white" if dark else "black",
+            "fg": "white" if dark else editor_font_color,
+            "insertbg": "white" if dark else editor_font_color,
             "shell_bg": "#2d2d2d" if dark else "black",
             "shell_fg": "#d4d4d4" if dark else "white",
+            "highlight_bg": "#333333" if dark else "#fffacd"
         }
         for tab_data in tabs.values():
             editor = tab_data["editor"]
-            editor.config(bg=colors["bg"], fg=colors["fg"], insertbackground=colors["insertbg"])
+            editor.config(bg=colors["bg"], fg=colors["fg"], insertbackground=colors["insertbg"],
+                          font=(editor_font_family, editor_font_size))
+            editor.tag_configure("current_line", background=colors["highlight_bg"])
         shell.config(bg=colors["shell_bg"], fg=colors["shell_fg"], insertbackground=colors["insertbg"])
 
     # Toolbar
