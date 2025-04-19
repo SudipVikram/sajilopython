@@ -9,6 +9,7 @@ import ctypes
 import io
 import shutil
 import json
+from _thread import interrupt_main
 
 # Initialize pygame
 pygame.init()
@@ -278,16 +279,62 @@ class LineNumberCanvas(tk.Canvas):
 
 
 def capture_output(code):
+    if not pygame.get_init():
+        return "Error: Pygame window is closed. Please reopen it from the Options menu."
+
     old_stdout = sys.stdout
     sys.stdout = io.StringIO()
-    try:
-        exec(code, {'bob': bob})
-    except Exception as e:
-        sys.stdout = old_stdout
-        return f"Error: {str(e)}"
-    output = sys.stdout.getvalue()
+
+    # Create a safe execution environment
+    safe_globals = {
+        'bob': bob,
+        '__builtins__': {
+            'print': print,
+            'range': range,
+            'len': len,
+            'input': input,
+            'str': str,
+            'int': int,
+            'float': float,
+            'list': list,
+            'dict': dict,
+            'tuple': tuple,
+            'set': set,
+            'bool': bool
+        }
+    }
+
+    # For storing the execution result
+    exec_result = {"output": None, "error": None}
+
+    def execute_code():
+        try:
+            exec(code, safe_globals)
+            exec_result["output"] = sys.stdout.getvalue()
+        except Exception as e:
+            exec_result["error"] = str(e)
+
+    # Start the execution in a separate thread
+    exec_thread = threading.Thread(target=execute_code)
+    exec_thread.daemon = True
+    exec_thread.start()
+
+    # Wait for the thread to complete with timeout
+    exec_thread.join(timeout=3)  # 3 second timeout
+
+    if exec_thread.is_alive():
+        # Thread is still running - interrupt it
+        interrupt_main()
+        exec_thread.join()  # Give it a moment to stop
+        return "Error: Code execution timed out (possible infinite loop)"
+
+    # Restore stdout
     sys.stdout = old_stdout
-    return output
+
+    if exec_result["error"]:
+        return f"Error: {exec_result['error']}"
+
+    return exec_result["output"] or ""
 
 
 def highlight_syntax(editor):
@@ -378,7 +425,25 @@ def workbench():
 
     # Start pygame thread
     def run_pygame():
-        pygame_manager.run_playground()
+        try:
+            clock = pygame.time.Clock()
+            while pygame_manager.running:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame_manager.quit_pygame()
+                        return
+
+                try:
+                    bob.update()
+                    pygame_manager.screen.fill(BG_COLOR)
+                    bob.draw(pygame_manager.screen)
+                    pygame.display.update()
+                    clock.tick(30)
+                except KeyboardInterrupt:
+                    pygame_manager.quit_pygame()
+                    return
+        except Exception as e:
+            print(f"Playground error: {str(e)}")
 
     threading.Thread(target=run_pygame, daemon=True).start()
 
@@ -540,6 +605,7 @@ def workbench():
                 status_var.set(f"Error: {str(e)}")
 
     def open_settings():
+        global editor_font_family, editor_font_size, editor_font_color, theme_mode, settings_win
         global editor_font_family, editor_font_size, editor_font_color, settings_win
 
         if settings_win and tk.Toplevel.winfo_exists(settings_win):
@@ -548,14 +614,8 @@ def workbench():
 
         settings_win = tk.Toplevel()
         settings_win.title("Settings")
-        settings_win.geometry("350x300")
+        settings_win.geometry("400x350")
         settings_win.resizable(False, False)
-
-        def toggle_theme():
-            global theme_mode
-            theme_mode = "dark" if theme_var.get() else "light"
-            apply_theme()
-            save_config()
 
         def choose_font_color():
             color_frame = tk.Frame(settings_win)
@@ -568,15 +628,17 @@ def workbench():
                 save_config()
 
         def apply_font_settings():
-            global editor_font_family, editor_font_size
+            global editor_font_family, editor_font_size, editor_font_color
             editor_font_family = font_family_var.get()
             editor_font_size = int(font_size_var.get())
             apply_theme()
             save_config()
 
-        theme_var = tk.BooleanVar(value=(theme_mode == "dark"))
-        tk.Checkbutton(settings_win, text="Enable Dark Theme", variable=theme_var, command=toggle_theme,
-                       font=("Comic Sans MS", 12)).pack(pady=10)
+        theme_options = ["light", "dark", "dusk", "dawn"]
+        tk.Label(settings_win, text="Theme Mode:", font=("Comic Sans MS", 10)).pack()
+        theme_mode_var = tk.StringVar(value=theme_mode)
+        tk.OptionMenu(settings_win, theme_mode_var, *theme_options, command=lambda val: set_theme_mode(val)).pack(
+            pady=5)
 
         tk.Label(settings_win, text="Font Family:", font=("Comic Sans MS", 10)).pack()
         font_family_var = tk.StringVar(value=editor_font_family)
@@ -588,7 +650,18 @@ def workbench():
         tk.OptionMenu(settings_win, font_size_var, *font_sizes).pack()
 
         tk.Button(settings_win, text="Choose Font Color", command=choose_font_color).pack(pady=5)
-        tk.Button(settings_win, text="✅ Apply Font Settings", command=apply_font_settings).pack(pady=10)
+        tk.Button(settings_win, text="✅ Apply Font Settings", command=apply_font_settings,
+                  font=("Comic Sans MS", 11)).pack(pady=10)
+
+        tk.Label(settings_win,
+                 text=f"Current Font: {editor_font_family}, Size: {editor_font_size}, Color: {editor_font_color}",
+                 font=("Comic Sans MS", 10), fg="gray").pack(pady=5)
+
+    def set_theme_mode(mode):
+        global theme_mode
+        theme_mode = mode
+        apply_theme()
+        save_config()
 
     def apply_theme():
         dark = theme_mode == "dark"
