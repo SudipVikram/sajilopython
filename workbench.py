@@ -75,7 +75,8 @@ def save_config():
             "shell_bg": shell_bg,
             "shell_fg": shell_fg,
             "highlight_bg": highlight_bg,
-            "line_bg": line_bg
+            "line_bg": line_bg,
+            "bootstrap_theme": selected_theme
         }, f)
 
 config = load_config()
@@ -403,15 +404,85 @@ def highlight_syntax(editor):
                 end_idx = f"{lineno}.{match.end()}"
                 editor.tag_add(tag, start_idx, end_idx)
 
+# -------------------------------------------------------------------------
+# 🎨 ttkbootstrap Themes and Styles Reference
+# -------------------------------------------------------------------------
+
+# 🪟 Available `themename` options (for the entire application window)
+# Set it using:
+#     root = tb.Window(themename="flatly")
+
+# ✅ Light Themes:
+# - "flatly"
+# - "journal"
+# - "litera"
+# - "minty"
+# - "morph"
+# - "pulse"
+# - "sandstone"
+# - "united"
+# - "yeti"
+
+# 🌙 Dark Themes:
+# - "darkly"
+# - "cyborg"
+# - "superhero"
+# - "solar"
+# - "vapor"
+# - "darkmode"
+# - "sketchy"
+
+# -------------------------------------------------------------------------
+
+# 🧱 Available `bootstyle` options (for widgets like buttons, labels, etc.)
+# Use it like:
+#     tb.Button(..., bootstyle="primary-outline")
+
+# 🎯 Core Bootstyles:
+# - "primary"    → solid blue (main action)
+# - "secondary"  → neutral gray (default fallback)
+# - "success"    → green (success state)
+# - "info"       → light blue (informational)
+# - "warning"    → orange/yellow (warning)
+# - "danger"     → red (destructive)
+# - "light"      → very light gray (good for dark themes)
+# - "dark"       → dark gray (for contrast)
+
+# ➕ Bootstyle Variants:
+# - "" (default solid background)
+# - "-outline" (transparent background with colored border)
+# - "-link" (no background, looks like hyperlink)
+
+# 🧪 Examples:
+#     bootstyle="primary"
+#     bootstyle="danger-outline"
+#     bootstyle="info-link"
+#     bootstyle="success,outline"  # comma-separated also works
+
+# -------------------------------------------------------------------------
+
+# 🧰 Bonus: Print all themes and styles dynamically
+# import ttkbootstrap as tb
+# print("Themes:", tb.Style().theme_names())
+# print("Bootstyles:", tb.Style().style_names())
+
+# -------------------------------------------------------------------------
 
 def workbench():
     #root = tk.Tk()
-    root = tb.Window(themename="flatly")  # You can choose from many themes!
 
-    window_bg_color = "#2D8EFF"
-    root.configure(bg=window_bg_color)
+    config = load_config()
+    selected_theme = config.get("bootstrap_theme", "flatly")
+    root = tb.Window(themename=selected_theme)  # You can choose from many themes!
+
+    style = tb.Style()  # Create a global or local style reference
+    theme_var = tk.StringVar(value=style.theme.name)
+    style.theme_use(selected_theme)
+
+    #window_bg_color = "#2D8EFF"
+    #root.configure(bg=window_bg_color)
     style = ttk.Style()
-    style.configure("Editor.TFrame", background=window_bg_color)
+    #style.configure("Editor.TFrame", background=window_bg_color)
 
     root.title("Sajilo Python Workbench")
     root.state('zoomed')
@@ -432,19 +503,19 @@ def workbench():
         status_var.set(f"Gravity {'ON' if gravity_on.get() else 'OFF'}")
 
     # Main layout containers
-    main_panel = tk.PanedWindow(root, orient=tk.HORIZONTAL, sashwidth=8, sashrelief=tk.RAISED, bg=window_bg_color)
+    main_panel = tk.PanedWindow(root, orient=tk.HORIZONTAL, sashwidth=8, sashrelief=tk.RAISED)
     main_panel.pack(fill=tk.BOTH, expand=True)
 
     # Left panel (Editor + Shell)
-    left_panel = tk.PanedWindow(main_panel, orient=tk.VERTICAL, sashwidth=8, sashrelief=tk.RAISED, bg=window_bg_color)
+    left_panel = tk.PanedWindow(main_panel, orient=tk.VERTICAL, sashwidth=8, sashrelief=tk.RAISED)
     main_panel.add(left_panel)
 
     # Right panel (Playground)
-    right_panel = tk.Frame(main_panel, bg=window_bg_color)
+    right_panel = tk.Frame(main_panel)
     main_panel.add(right_panel)
 
     # Editor Notebook
-    editor_frame = ttk.Frame(left_panel, style="Editor.TFrame")
+    editor_frame = ttk.Frame(left_panel)
     left_panel.add(editor_frame, height=500)
 
     notebook = ttk.Notebook(editor_frame)
@@ -456,7 +527,7 @@ def workbench():
     style.configure("TNotebook", tabmargins=[2, 5, 2, 0])  # Reduce tab indent
 
     # Shell Output
-    shell_frame = ttk.Frame(left_panel, style="Editor.TFrame")
+    shell_frame = ttk.Frame(left_panel)
     left_panel.add(shell_frame, height=200)
 
     shell = scrolledtext.ScrolledText(shell_frame, height=10, bg="black", fg="white",
@@ -465,7 +536,17 @@ def workbench():
     shell.pack(fill='both', expand=True)
 
     # Initialize playground
-    pygame_frame = tk.Frame(right_panel, width=WIDTH, height=HEIGHT)
+    # Create a container for both the label and the pygame window
+    pygame_container = tk.Frame(right_panel)
+    pygame_container.pack(fill="both", expand=True)
+
+    # Add the title label
+    pygame_title = tk.Label(pygame_container, text="Sajilo Python Playground",
+                            font=("Comic Sans MS", 16, "bold"), fg="#333")
+    pygame_title.pack(pady=(10, 5))
+
+    # Frame for pygame itself
+    pygame_frame = tk.Frame(pygame_container, width=WIDTH, height=HEIGHT)
     pygame_frame.pack(fill="both", expand=True)
     pygame_manager.init_pygame(pygame_frame.winfo_id())
 
@@ -655,6 +736,14 @@ def workbench():
         global bg_color, fg_color, insert_bg, shell_bg, shell_fg, highlight_bg, line_bg
 
         default_config = load_config()  # This will return defaults
+        # Load bootstrap theme from config and apply it
+        selected_theme = config.get("bootstrap_theme", "flatly")
+        style = tb.Style()
+        style.theme_use(selected_theme)
+
+        # Initialize root window with the selected theme
+        root = tb.Window(themename=selected_theme)
+
         theme_mode = default_config["theme_mode"]
         editor_font_family = default_config["editor_font_family"]
         editor_font_size = default_config["editor_font_size"]
@@ -672,60 +761,57 @@ def workbench():
         messagebox.showinfo("Reset Complete", "All settings have been reset to defaults")
 
     def open_settings():
-        global editor_font_family, editor_font_size, editor_font_color, theme_mode, settings_win
-        global editor_font_family, editor_font_size, editor_font_color, settings_win, font_family_var, font_size_var
-
+        global settings_win, selected_theme
         if settings_win and tk.Toplevel.winfo_exists(settings_win):
             settings_win.lift()
             return
 
         settings_win = tk.Toplevel()
-        settings_win.title("Settings")
-        settings_win.geometry("400x450")
+        settings_win.title("🎨 Theme Settings")
+        settings_win.geometry("350x450")
         settings_win.resizable(False, False)
 
-        def choose_font_color():
-            color_frame = tk.Frame(settings_win)
-            color_frame.pack(pady=5)
-            color = colorchooser.askcolor(title="Choose Font Color", parent=settings_win)
-            if color[1]:
-                global editor_font_color
-                editor_font_color = color[1]
-                apply_theme()
-                save_config()
+        # Style manager
+        style = tb.Style()
 
-        def apply_font_settings():
-            global editor_font_family, editor_font_size, editor_font_color
-            editor_font_family = font_family_var.get()
-            editor_font_size = int(font_size_var.get())
-            apply_theme()
+        # Header
+        ttk.Label(settings_win, text="Select Theme", font=("Comic Sans MS", 12)).pack(pady=10)
+
+        # Dropdown for theme selection
+        theme_var = tk.StringVar(value=style.theme.name)
+        theme_options = sorted(style.theme_names())
+
+        def apply_selected_theme(theme_name):
+            style.theme_use(theme_name)
+            global selected_theme
+            selected_theme = theme_name
             save_config()
 
-        theme_options = ["light", "dark", "dusk", "dawn"]
-        tk.Label(settings_win, text="Theme Mode:", font=("Comic Sans MS", 10)).pack()
-        theme_mode_var = tk.StringVar(value=theme_mode)
-        tk.OptionMenu(settings_win, theme_mode_var, *theme_options, command=lambda val: set_theme_mode(val)).pack(
-            pady=5)
+            # Refresh preview
+            for widget in preview_frame.winfo_children():
+                widget.destroy()
 
-        tk.Label(settings_win, text="Font Family:", font=("Comic Sans MS", 10)).pack()
-        font_family_var = tk.StringVar(value=editor_font_family)
-        tk.OptionMenu(settings_win, font_family_var, *sorted(font.families())).pack()
+            # Font preview label
+            tb.Label(preview_frame, text="AaBbYyZz 123", font=("Comic Sans MS", 14, "bold")).pack(pady=10)
 
-        tk.Label(settings_win, text="Font Size:", font=("Comic Sans MS", 10)).pack()
-        font_size_var = tk.StringVar(value=str(editor_font_size))
-        font_sizes = [str(s) for s in range(8, 33)]
-        tk.OptionMenu(settings_win, font_size_var, *font_sizes).pack()
+            # Button previews
+            tb.Button(preview_frame, text="Primary", bootstyle="primary").pack(padx=5, pady=3)
+            tb.Button(preview_frame, text="Danger", bootstyle="danger").pack(padx=5, pady=3)
+            tb.Button(preview_frame, text="Info", bootstyle="info").pack(padx=5, pady=3)
 
-        tk.Button(settings_win, text="Choose Font Color", command=choose_font_color).pack(pady=5)
-        tk.Button(settings_win, text="✅ Apply Font Settings", command=apply_font_settings,
-                  font=("Comic Sans MS", 11)).pack(pady=10)
+        ttk.OptionMenu(settings_win, theme_var, theme_var.get(), *theme_options,
+                       command=apply_selected_theme).pack(pady=5)
 
-        tk.Label(settings_win,
-                 text=f"Current Font: {editor_font_family}, Size: {editor_font_size}, Color: {editor_font_color}",
-                 font=("Comic Sans MS", 10), fg="gray").pack(pady=5)
-        # Add reset button at the bottom
-        tk.Button(settings_win, text="🔄 Reset to Defaults", command=reset_to_default,
-                  font=("Comic Sans MS", 11), bg="#FF9800", fg="white").pack(pady=10)
+        # Preview area
+        ttk.Label(settings_win, text="Theme Preview", font=("Comic Sans MS", 11, "bold")).pack(pady=(20, 10))
+        preview_frame = ttk.Frame(settings_win)
+        preview_frame.pack(pady=5)
+
+        # Initial load
+        apply_selected_theme(theme_var.get())
+
+        # Close button
+        tb.Button(settings_win, text="Close", bootstyle="secondary", command=settings_win.destroy).pack(pady=20)
 
     def set_theme_mode(mode):
         global theme_mode
@@ -744,7 +830,7 @@ def workbench():
         shell.config(bg=shell_bg, fg=shell_fg, insertbackground=insert_bg)
 
     # Toolbar
-    toolbar = tk.Frame(root, bg=window_bg_color, height=40)
+    toolbar = tk.Frame(root, height=40)
     toolbar.pack(fill="x", padx=5, pady=5)
 
     button_style = {
