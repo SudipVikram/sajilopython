@@ -134,7 +134,7 @@ def create_editor_tab(code="", filepath=None):
         editor.tag_add("active_line", "insert linestart", "insert lineend+1c")
         editor.tag_config("active_line", background="#e9efff")
 
-    editor.bind("<KeyRelease>", lambda e: (highlight(), update_lines(), highlight_line()))
+    editor.bind("<KeyRelease>", lambda e: (highlight(), update_lines(), highlight_line(), mark_unsaved(notebook.select())))
     editor.bind("<ButtonRelease>", highlight_line)
     editor.bind("<Return>", auto_indent)
     editor.insert("1.0", code)
@@ -516,6 +516,30 @@ def kill_process():
 
 run_btn.config(command=run_code)
 
+def mark_unsaved(tab_id):
+    if not tab_id:
+        return
+    if tab_id not in unsaved_tabs:
+        tab_text = notebook.tab(tab_id, "text")
+        if not tab_text.startswith("*"):
+            notebook.tab(tab_id, text="*" + tab_text)
+        unsaved_tabs.add(tab_id)
+
+# ✅ Handle Save Confirmation on Exit
+
+def confirm_on_exit():
+    unsaved = list(unsaved_tabs)
+    if unsaved:
+        confirm = messagebox.askyesnocancel("Unsaved Changes", "You have unsaved tabs. Do you want to save them before exiting?")
+        if confirm is None:
+            return  # Cancel
+        if confirm:
+            for tab_id in unsaved:
+                notebook.select(tab_id)
+                save_file()
+    save_session()
+    root.destroy()
+
 # --- Toolbar Buttons ---
 tb.Button(toolbar, text="🆕 New", command=new_tab, bootstyle=INFO).pack(side=tk.LEFT, padx=2)
 tb.Button(toolbar, text="📂 Open", command=open_file, bootstyle=SECONDARY).pack(side=tk.LEFT, padx=2)
@@ -544,4 +568,6 @@ update_physics_status()
 load_session()
 if not notebook.tabs():
     new_tab()
+
+root.protocol("WM_DELETE_WINDOW", confirm_on_exit)
 root.mainloop()
