@@ -94,7 +94,8 @@ def create_editor_tab(code="", filepath=None):
     editor.pack(fill="both", expand=True, side="left")
     vscroll = tk.Scrollbar(text_frame, command=editor.yview)
     vscroll.pack(side="right", fill="y")
-    editor.configure(yscrollcommand=vscroll.set)
+    editor.configure(yscrollcommand=lambda *args: (vscroll.set(*args), line_numbers.yview_moveto(args[0])))
+    line_numbers.configure(yscrollcommand=vscroll.set)
 
     def highlight(event=None):
         editor.tag_remove("keyword", "1.0", "end")
@@ -323,9 +324,6 @@ def apply_theme(theme):
     config["theme"] = theme
     save_config(config)
 
-settings_menu.add_command(label="Theme", command=open_theme_settings)
-settings_menu.add_command(label="Physics", command=open_physics_settings)
-
 # --- Run Button ---
 def run_code():
     global previous_process, kill_requested
@@ -392,7 +390,7 @@ tb.Button(toolbar, text="🔍 Find", command=find_and_replace, bootstyle=WARNING
 tb.Button(toolbar, text="ℹ️ About", command=lambda: messagebox.showinfo("About", "Sajilo Python Playground\nMade with ❤️ at Beyond Apogee"), bootstyle="light-outline").pack(side=tk.RIGHT, padx=2)
 
 # Add Media and Library menu items
-settings_menu.add_command(label="🎨 Theme", command=lambda: apply_theme(config.get("theme", "flatly")))
+settings_menu.add_command(label="🎨 Theme", command=open_theme_settings)
 settings_menu.add_command(label="🧲 Physics", command=open_physics_settings)
 settings_menu.add_command(label="📚 Libraries", command=open_library_manager)
 settings_menu.add_command(label="🎞️ Media", command=open_media_manager)
