@@ -167,9 +167,16 @@ def save_session():
 
 # --- Media & Library Manager ---
 def open_media_manager():
+    root.attributes('-disabled', True)
     dialog = tb.Toplevel(root)
     dialog.title("Media Manager")
-    dialog.geometry("600x400")
+    dialog.grab_set()
+    dialog.transient(root)
+    dialog.update_idletasks()
+    x = root.winfo_x() + (root.winfo_width() // 2) - (600 // 2)
+    y = root.winfo_y() + (root.winfo_height() // 2) - (400 // 2)
+    dialog.geometry(f"600x400+{x}+{y}")
+
     canvas = tk.Canvas(dialog)
     scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=canvas.yview)
     scroll_frame = ttk.Frame(canvas)
@@ -182,8 +189,7 @@ def open_media_manager():
     def refresh():
         for widget in scroll_frame.winfo_children():
             widget.destroy()
-        row = 0
-        col = 0
+        row = col = 0
         for fname in os.listdir(MEDIA_FOLDER):
             fpath = os.path.join(MEDIA_FOLDER, fname)
             if fname.lower().endswith((".png", ".jpg", ".gif")):
@@ -211,11 +217,19 @@ def open_media_manager():
 
     tb.Button(dialog, text="Upload Media", command=upload, bootstyle=INFO).pack(pady=5)
     refresh()
+    dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
 
 def open_library_manager():
+    root.attributes('-disabled', True)
     dialog = tb.Toplevel(root)
     dialog.title("Library Manager")
-    dialog.geometry("600x400")
+    dialog.grab_set()
+    dialog.transient(root)
+    dialog.update_idletasks()
+    x = root.winfo_x() + (root.winfo_width() // 2) - (600 // 2)
+    y = root.winfo_y() + (root.winfo_height() // 2) - (400 // 2)
+    dialog.geometry(f"600x400+{x}+{y}")
+
     frame = tb.Frame(dialog)
     frame.pack(fill="both", expand=True)
 
@@ -245,6 +259,7 @@ def open_library_manager():
 
     tb.Button(dialog, text="Upload Library", command=upload, bootstyle=SUCCESS).pack(pady=5)
     refresh()
+    dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
 
 # --- Toolbar Actions ---
 def new_tab(): create_editor_tab()
@@ -289,27 +304,47 @@ def find_and_replace():
 # --- Settings ---
 def update_physics_status():
     physics = config.get("physics", {})
-    if physics.get("enabled") or any(physics.values()):
-        active = [k.capitalize() for k, v in physics.items() if v and k != "enabled"]
-        text = "Physics: " + (", ".join(active) if active else "Enabled")
-        physics_state_label.config(text=text, bootstyle=SUCCESS)
+    enabled_flags = [k for k, v in physics.items() if v]
+    if enabled_flags:
+        physics_state_label.config(text="Physics: " + ", ".join([k.capitalize() for k in enabled_flags]), bootstyle=SUCCESS)
     else:
         physics_state_label.config(text="Physics: Disabled", bootstyle=SECONDARY)
 
 def open_physics_settings():
+    root.attributes('-disabled', True)
     dialog = tb.Toplevel(root)
     dialog.title("Physics Engine Settings")
-    dialog.geometry("400x350")
+    dialog.grab_set()
+    dialog.transient(root)
+    dialog.resizable(False, False)
+    dialog.update_idletasks()
+    x = root.winfo_x() + (root.winfo_width() // 2) - (400 // 2)
+    y = root.winfo_y() + (root.winfo_height() // 2) - (350 // 2)
+    dialog.geometry(f"400x350+{x}+{y}")
+
     physics = config.get("physics", {})
-    vars = {k: tk.BooleanVar(value=physics.get(k, False)) for k in ["enabled", "gravity", "wall", "collision", "boundary"]}
+    vars = {
+        "gravity": tk.BooleanVar(value=physics.get("gravity", False)),
+        "wall": tk.BooleanVar(value=physics.get("wall", False)),
+        "collision": tk.BooleanVar(value=physics.get("collision", False)),
+        "boundary": tk.BooleanVar(value=physics.get("boundary", False))
+    }
+    content = tb.Frame(dialog)
+    content.pack(padx=20, pady=10, fill='x')
     for key, var in vars.items():
-        tb.Checkbutton(dialog, text=key.capitalize(), variable=var, bootstyle="round-toggle").pack(anchor="w", padx=20, pady=3)
+        tb.Checkbutton(content, text=key.capitalize(), variable=var, bootstyle="round-toggle").pack(anchor="w", pady=4)
+
     def save():
         config["physics"] = {k: v.get() for k, v in vars.items()}
         save_config(config)
         update_physics_status()
+        root.attributes('-disabled', False)
         dialog.destroy()
+        root.attributes('-disabled', False)
+
     tb.Button(dialog, text="Save", command=save, bootstyle=SUCCESS).pack(pady=10)
+    dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
+
 
 def open_theme_settings():
     root.attributes('-disabled', True)
@@ -342,6 +377,23 @@ def apply_theme(theme):
     root.style.theme_use(theme)
     config["theme"] = theme
     save_config(config)
+
+def open_about_dialog():
+    root.attributes('-disabled', True)
+    dialog = tb.Toplevel(root)
+    dialog.title("About Sajilo Python Playground")
+    dialog.geometry("400x200")
+    dialog.grab_set()
+    dialog.transient(root)
+    dialog.update_idletasks()
+    x = root.winfo_x() + (root.winfo_width() // 2) - (400 // 2)
+    y = root.winfo_y() + (root.winfo_height() // 2) - (200 // 2)
+    dialog.geometry(f"400x200+{x}+{y}")
+
+    tb.Label(dialog, text="Sajilo Python Playground", font=("Helvetica", 16, "bold")).pack(pady=10)
+    tb.Label(dialog, text="Made with ❤️ at Beyond Apogee").pack()
+    tb.Button(dialog, text="Close", command=lambda: (root.attributes('-disabled', False), dialog.destroy()), bootstyle=SECONDARY).pack(pady=15)
+    dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
 
 # --- Run Button ---
 def run_code():
@@ -406,7 +458,7 @@ tb.Button(toolbar, text="📂 Open", command=open_file, bootstyle=SECONDARY).pac
 tb.Button(toolbar, text="💾 Save", command=save_file, bootstyle=SUCCESS).pack(side=tk.LEFT, padx=2)
 tb.Button(toolbar, text="❌ Close", command=close_tab, bootstyle=DANGER).pack(side=tk.LEFT, padx=2)
 tb.Button(toolbar, text="🔍 Find", command=find_and_replace, bootstyle=WARNING).pack(side=tk.LEFT, padx=2)
-tb.Button(toolbar, text="ℹ️ About", command=lambda: messagebox.showinfo("About", "Sajilo Python Playground\nMade with ❤️ at Beyond Apogee"), bootstyle="light-outline").pack(side=tk.RIGHT, padx=2)
+tb.Button(toolbar, text="ℹ️ About", command=open_about_dialog, bootstyle="light-outline").pack(side=tk.RIGHT, padx=2)
 
 # Add Media and Library menu items
 settings_menu.add_command(label="🎨 Theme", command=open_theme_settings)
