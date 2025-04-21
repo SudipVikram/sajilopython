@@ -7,14 +7,14 @@ import os
 import json
 
 # --- Config Persistence ---
-CONFIG_FILE = "sajilo_config.json"
+CONFIG_FILE = "sajilopython_workbench_config.json"
 
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r") as f:
             return json.load(f)
-    return {"theme": "default"}
+    return {"theme": "default", "physics": {"enabled": False, "gravity": False, "wall": False, "collision": False, "boundary": False}}
 
 
 def save_config(config):
@@ -50,6 +50,10 @@ shell_output.pack(fill="both", expand=False, padx=10, pady=(5, 5))
 shell_output.insert(tk.END, "💡 Shell output will appear here...\n")
 shell_output.config(state="disabled")
 
+# --- Physics State Bar ---
+physics_state_label = ttk.Label(root, text="", foreground="green")
+physics_state_label.pack(fill="x", padx=10)
+
 # --- Bottom: Controls ---
 bottom_bar = ttk.Frame(root)
 bottom_bar.pack(fill="x", padx=10, pady=(0, 10))
@@ -60,11 +64,109 @@ run_button.pack(side="left")
 status_label = ttk.Label(bottom_bar, text="💡 Write your code and press Run.")
 status_label.pack(side="left", padx=10)
 
-settings_button = ttk.Button(bottom_bar, text="⚙️ Settings", command=lambda: open_settings())
-settings_button.pack(side="right")
+# --- Settings Menu ---
+settings_menu = tk.Menu(root, tearoff=0)
 
+def open_physics_settings():
+    if hasattr(root, "active_dialog") and root.active_dialog:
+        return
+    root.active_dialog = tk.Toplevel(root)
+    root.active_dialog.title("Physics Engine Settings")
+    root.active_dialog.geometry("400x300")
+    root.active_dialog.grab_set()
+    root.active_dialog.protocol("WM_DELETE_WINDOW", lambda: close_dialog())
+
+    physics = config.get("physics", {})
+    physics_var = tk.BooleanVar(value=physics.get("enabled", False))
+    gravity_var = tk.BooleanVar(value=physics.get("gravity", False))
+    wall_var = tk.BooleanVar(value=physics.get("wall", False))
+    collision_var = tk.BooleanVar(value=physics.get("collision", False))
+    boundary_var = tk.BooleanVar(value=physics.get("boundary", False))
+
+    def update_active_state():
+        all_selected = any([gravity_var.get(), wall_var.get(), collision_var.get(), boundary_var.get()])
+        physics_var.set(all_selected)
+        config["physics"] = {
+            "enabled": all_selected,
+            "gravity": gravity_var.get(),
+            "wall": wall_var.get(),
+            "collision": collision_var.get(),
+            "boundary": boundary_var.get()
+        }
+        update_physics_status_label()
+
+    def sync_all_with_main():
+        if physics_var.get():
+            gravity_var.set(True)
+            wall_var.set(True)
+            collision_var.set(True)
+            boundary_var.set(True)
+
+    physics_frame = ttk.Frame(root.active_dialog)
+    physics_frame.pack(pady=10)
+    ttk.Checkbutton(physics_frame, text="Activate Physics Engine", variable=physics_var, command=sync_all_with_main).pack()
+    ttk.Checkbutton(physics_frame, text="Gravity", variable=gravity_var, command=update_active_state).pack(anchor="w")
+    ttk.Checkbutton(physics_frame, text="Wall", variable=wall_var, command=update_active_state).pack(anchor="w")
+    ttk.Checkbutton(physics_frame, text="Collision", variable=collision_var, command=update_active_state).pack(anchor="w")
+    ttk.Checkbutton(physics_frame, text="Boundary", variable=boundary_var, command=update_active_state).pack(anchor="w")
+
+    def save_and_close():
+        config["physics"] = {
+            "enabled": physics_var.get(),
+            "gravity": gravity_var.get(),
+            "wall": wall_var.get(),
+            "collision": collision_var.get(),
+            "boundary": boundary_var.get()
+        }
+        save_config(config)
+        update_physics_status_label()
+        close_dialog()
+
+    ttk.Button(root.active_dialog, text="Save", command=save_and_close).pack(pady=10)
+
+def open_theme_settings():
+    if hasattr(root, "active_dialog") and root.active_dialog:
+        return
+    root.active_dialog = tk.Toplevel(root)
+    root.active_dialog.title("Theme Settings")
+    root.active_dialog.geometry("300x200")
+    root.active_dialog.grab_set()
+    root.active_dialog.protocol("WM_DELETE_WINDOW", lambda: close_dialog())
+
+    theme_var = tk.StringVar(value=style.theme_use())
+    ttk.Label(root.active_dialog, text="Select Theme:").pack(pady=5)
+    ttk.OptionMenu(root.active_dialog, theme_var, theme_var.get(), *style.theme_names(),
+                   command=lambda t: apply_theme_and_save(t)).pack()
+
+    ttk.Button(root.active_dialog, text="Close", command=lambda: close_dialog()).pack(pady=15)
+
+def apply_theme_and_save(theme):
+    style.theme_use(theme)
+    config["theme"] = theme
+    save_config(config)
+
+def close_dialog():
+    if hasattr(root, "active_dialog") and root.active_dialog:
+        root.active_dialog.destroy()
+        root.active_dialog = None
+
+settings_menu.add_command(label="Theme", command=open_theme_settings)
+settings_menu.add_command(label="Physics Engine", command=open_physics_settings)
+
+settings_button = ttk.Menubutton(bottom_bar, text="⚙️ Settings", menu=settings_menu, direction="above")
+settings_button.pack(side="right")
+settings_button["menu"] = settings_menu
 
 # --- Helpers ---
+def update_physics_status_label():
+    if config.get("physics", {}).get("enabled", False):
+        active = [k.capitalize() for k, v in config.get("physics", {}).items() if k != "enabled" and v]
+        text = "Physics: " + (", ".join(active) if active else "Enabled with no components")
+    else:
+        text = "Physics: Disabled"
+    physics_state_label.config(text=text)
+
+
 def is_pygame_code(code):
     lowered = code.lower()
     return "import pygame" in lowered or "from pygame" in lowered or "pygame." in lowered
@@ -162,45 +264,11 @@ def read_output(output_path):
     root.after(500, lambda: read_output(output_path))
 
 
-# --- Settings Dialog ---
-def open_settings():
-    settings_win = tk.Toplevel(root)
-    settings_win.title("Editor Settings")
-    settings_win.geometry("400x300")
-    settings_win.resizable(False, False)
-    settings_win.grab_set()
-
-    ttk.Label(settings_win, text="Select a Theme", font=("Arial", 12)).pack(pady=10)
-
-    theme_var = tk.StringVar()
-    theme_var.set(style.theme_use())
-
-    def apply_theme(theme_name):
-        style.theme_use(theme_name)
-        build_preview(preview_frame)
-        config["theme"] = theme_name
-        save_config(config)
-
-    ttk.OptionMenu(settings_win, theme_var, theme_var.get(), *style.theme_names(),
-                   command=apply_theme).pack()
-
-    ttk.Label(settings_win, text="Preview:", font=("Arial", 10, "bold")).pack(pady=10)
-    preview_frame = ttk.Frame(settings_win)
-    preview_frame.pack(pady=5)
-
-    def build_preview(parent):
-        for widget in parent.winfo_children():
-            widget.destroy()
-        ttk.Label(parent, text="Sample Label").pack(pady=2)
-        ttk.Entry(parent).pack(pady=2)
-        ttk.Button(parent, text="Sample Button").pack(pady=2)
-
-    build_preview(preview_frame)
-    ttk.Button(settings_win, text="Close", command=settings_win.destroy).pack(pady=15)
-
-
 # Assign run_code to the button after defining it
 run_button.config(command=run_code)
+
+# Update physics status on startup
+update_physics_status_label()
 
 # Run the app
 root.mainloop()
