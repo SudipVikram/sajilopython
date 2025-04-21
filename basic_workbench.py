@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import filedialog, messagebox
 import subprocess
 import tempfile
 import sys
@@ -8,22 +9,16 @@ import threading
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 
-# --- Config Persistence ---
 CONFIG_FILE = "sajilopython_workbench_config.json"
 
+# --- Config Handling ---
 def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r") as f:
             return json.load(f)
     return {
         "theme": "flatly",
-        "physics": {
-            "enabled": False,
-            "gravity": False,
-            "wall": False,
-            "collision": False,
-            "boundary": False
-        }
+        "physics": {"enabled": False, "gravity": False, "wall": False, "collision": False, "boundary": False}
     }
 
 def save_config(config):
@@ -31,16 +26,68 @@ def save_config(config):
         json.dump(config, f, indent=4)
 
 # --- Globals ---
-previous_process = None
-kill_requested = False
-output_thread = None
-
-# --- Initialize App ---
 config = load_config()
 root = tb.Window(themename=config.get("theme", "flatly"))
 root.title("Sajilo Python Playground")
-root.geometry("900x700")
+root.geometry("900x740")  # increased height
 root.update_idletasks()
+previous_process = None
+kill_requested = False
+output_thread = None
+current_file = None
+
+# --- Toolbar Functions ---
+def new_file():
+    global current_file
+    editor.delete("1.0", tk.END)
+    current_file = None
+    root.title("Sajilo Python Playground - Untitled")
+
+def open_file():
+    global current_file
+    filepath = filedialog.askopenfilename(filetypes=[("Python Files", "*.py")])
+    if filepath:
+        with open(filepath, "r", encoding="utf-8") as f:
+            editor.delete("1.0", tk.END)
+            editor.insert("1.0", f.read())
+        current_file = filepath
+        root.title(f"Sajilo Python Playground - {os.path.basename(filepath)}")
+
+def save_file():
+    global current_file
+    if not current_file:
+        current_file = filedialog.asksaveasfilename(defaultextension=".py", filetypes=[("Python Files", "*.py")])
+    if current_file:
+        with open(current_file, "w", encoding="utf-8") as f:
+            f.write(editor.get("1.0", tk.END))
+        root.title(f"Sajilo Python Playground - {os.path.basename(current_file)}")
+
+def close_editor():
+    root.quit()
+
+def media_action():
+    messagebox.showinfo("Media", "Media functionality coming soon!")
+
+def show_about():
+    messagebox.showinfo("About", "Sajilo Python Playground\nMade with ❤️ at Beyond Apogee")
+
+# --- Top Toolbar ---
+toolbar = tb.Frame(root)
+toolbar.pack(fill=X, padx=10, pady=5)
+
+button_specs = [
+    ("🆕 New", new_file, "info"),
+    ("📂 Open", open_file, "secondary"),
+    ("💾 Save", save_file, "success"),
+    ("❌ Close", close_editor, "danger"),
+    ("🎞️ Media", media_action, "warning")
+]
+
+for label, cmd, style in button_specs:
+    tb.Button(toolbar, text=label, command=cmd, bootstyle=style).pack(side=LEFT, padx=2)
+
+# About Button to far right
+tb.Button(toolbar, text="ℹ️ About", command=show_about, bootstyle="light-outline").pack(side=RIGHT, padx=2)
 
 # --- Physics Status Label Function ---
 def update_physics_status_label():
@@ -53,13 +100,10 @@ def update_physics_status_label():
         physics_state_label.config(text="Physics: Disabled", bootstyle=SECONDARY)
 
 # --- UI Elements ---
-editor = tk.Text(root, font=("Consolas", 12), height=20)
-editor.pack(fill=tk.BOTH, expand=True, padx=10, pady=(10, 0))
+editor = tk.Text(root, font=("Consolas", 12), height=20, undo=True)
+editor.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 0))
 
-shell_output = tk.Text(
-    root, height=5, bg="black", fg="light green",
-    insertbackground="white", font=("Consolas", 11)
-)
+shell_output = tk.Text(root, height=5, bg="black", fg="light green", insertbackground="white", font=("Consolas", 11))
 shell_output.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 shell_output.insert(tk.END, "\U0001F4A1 Shell output will appear here...\n")
 shell_output.config(state=tk.DISABLED)
@@ -72,14 +116,13 @@ bottom_bar.pack(fill=tk.X, padx=10, pady=(0, 10))
 
 settings_menu = tk.Menu(root, tearoff=0)
 
-run_button = tb.Button(
-    bottom_bar, text="▶️ Run", bootstyle=(OUTLINE, SUCCESS), command=lambda: run_code()
-)
+run_button = tb.Button(bottom_bar, text="▶️ Run", bootstyle=(OUTLINE, SUCCESS), command=lambda: run_code())
 run_button.pack(side=tk.LEFT)
 
 status_label = tb.Label(bottom_bar, text="💡 Write your code and press Run.")
 status_label.pack(side=tk.LEFT, padx=10)
 
+# --- Run / Kill ---
 def kill_process():
     global previous_process, kill_requested
     kill_requested = True
@@ -91,7 +134,6 @@ def kill_process():
             status_label.config(text=f"❌ Failed to kill: {e}")
     previous_process = None
     run_button.config(text="▶️ Run", command=run_code)
-
 
 def stream_output(proc):
     global kill_requested
@@ -113,7 +155,6 @@ def stream_output(proc):
     else:
         status_label.config(text="❌ Process killed.")
     run_button.config(text="▶️ Run", command=run_code)
-
 
 def run_code():
     global previous_process, kill_requested, output_thread
@@ -140,6 +181,14 @@ def run_code():
     output_thread = threading.Thread(target=stream_output, args=(previous_process,), daemon=True)
     output_thread.start()
 
+# --- Shortcuts ---
+root.bind("<F5>", lambda e: run_code())
+root.bind("<Control-n>", lambda e: new_file())
+root.bind("<Control-o>", lambda e: open_file())
+root.bind("<Control-s>", lambda e: save_file())
+root.bind("<Control-w>", lambda e: close_editor())
+
+# --- Settings ---
 def open_theme_settings():
     dialog = tb.Toplevel(root)
     dialog.title("Theme Settings")
@@ -166,7 +215,6 @@ def open_physics_settings():
     dialog.title("Physics Engine Settings")
     dialog.geometry("400x300")
     dialog.grab_set()
-
     physics = config.get("physics", {})
     physics_var = tk.BooleanVar(value=physics.get("enabled", False))
     gravity_var = tk.BooleanVar(value=physics.get("gravity", False))
@@ -195,12 +243,13 @@ def open_physics_settings():
 
     physics_frame = tb.Frame(dialog)
     physics_frame.pack(pady=10)
-
     tb.Checkbutton(physics_frame, text="Activate Physics Engine", variable=physics_var, command=sync_all_with_main, bootstyle="round-toggle").pack()
     tb.Checkbutton(physics_frame, text="Gravity", variable=gravity_var, command=update_active_state, bootstyle="round-toggle").pack(anchor=tk.W)
     tb.Checkbutton(physics_frame, text="Wall", variable=wall_var, command=update_active_state, bootstyle="round-toggle").pack(anchor=tk.W)
     tb.Checkbutton(physics_frame, text="Collision", variable=collision_var, command=update_active_state, bootstyle="round-toggle").pack(anchor=tk.W)
     tb.Checkbutton(physics_frame, text="Boundary", variable=boundary_var, command=update_active_state, bootstyle="round-toggle").pack(anchor=tk.W)
+
+    tb.Button(dialog, text="Save", command=lambda: [save_and_close(), dialog.destroy()], bootstyle=SUCCESS).pack(pady=10)
 
     def save_and_close():
         config["physics"] = {
@@ -212,9 +261,6 @@ def open_physics_settings():
         }
         save_config(config)
         update_physics_status_label()
-        dialog.destroy()
-
-    tb.Button(dialog, text="Save", command=save_and_close, bootstyle=SUCCESS).pack(pady=10)
 
 settings_menu.add_command(label="Theme", command=open_theme_settings)
 settings_menu.add_command(label="Physics Engine", command=open_physics_settings)
