@@ -1,10 +1,11 @@
 import tkinter as tk
-from tkinter import ttk
 import subprocess
 import tempfile
 import sys
 import os
 import json
+import ttkbootstrap as tb
+from ttkbootstrap.constants import *
 
 # --- Config Persistence ---
 CONFIG_FILE = "sajilopython_workbench_config.json"
@@ -14,12 +15,22 @@ def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r") as f:
             return json.load(f)
-    return {"theme": "default", "physics": {"enabled": False, "gravity": False, "wall": False, "collision": False, "boundary": False}}
+    return {
+        "theme": "flatly",
+        "physics": {
+            "enabled": False,
+            "gravity": False,
+            "wall": False,
+            "collision": False,
+            "boundary": False
+        }
+    }
 
 
 def save_config(config):
     with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f)
+        json.dump(config, f, indent=4)
+
 
 # --- Globals ---
 previous_process = None
@@ -27,54 +38,75 @@ file_offsets = {}
 output_path_active = None
 kill_requested = False
 
-
-# --- Tkinter UI Setup ---
-root = tk.Tk()
+# --- Initialize App ---
+config = load_config()
+root = tb.Window(themename=config.get("theme", "flatly"))
 root.title("Sajilo Python Playground")
 root.geometry("900x700")
 
-# Apply saved theme
-style = ttk.Style()
-config = load_config()
-theme_to_use = config.get("theme", "default")
-if theme_to_use in style.theme_names():
-    style.theme_use(theme_to_use)
 
-# --- Top: Editor ---
+# --- Physics Status Label Function ---
+def update_physics_status_label():
+    physics = config.get("physics", {})
+    if physics.get("enabled", False):
+        active = [k.capitalize() for k, v in physics.items()
+                  if k != "enabled" and v]
+        text = "Physics: " + (", ".join(active) if active else "Enabled with no components")
+        physics_state_label.config(text=text, bootstyle=SUCCESS)
+    else:
+        physics_state_label.config(text="Physics: Disabled", bootstyle=SECONDARY)
+
+
+# --- UI Elements ---
+# Editor
 editor = tk.Text(root, font=("Consolas", 12), height=20)
-editor.pack(fill="both", expand=True, padx=10, pady=(10, 0))
+editor.pack(fill=BOTH, expand=True, padx=10, pady=(10, 0))
 
-# --- Middle: Shell Output ---
-shell_output = tk.Text(root, height=10, bg="#111", fg="#0f0", insertbackground="white", font=("Consolas", 11))
-shell_output.pack(fill="both", expand=False, padx=10, pady=(5, 5))
-shell_output.insert(tk.END, "💡 Shell output will appear here...\n")
-shell_output.config(state="disabled")
+# Shell Output
+shell_output = tk.Text(
+    root,
+    height=10,
+    bg="#222",
+    fg="#ddd",
+    insertbackground="white",
+    font=("Consolas", 11)
+)
+shell_output.pack(fill=BOTH, expand=False, padx=10, pady=5)
+shell_output.insert(END, "💡 Shell output will appear here...\n")
+shell_output.config(state=DISABLED)
 
-# --- Physics State Bar ---
-physics_state_label = ttk.Label(root, text="", foreground="green")
-physics_state_label.pack(fill="x", padx=10)
+# Physics State Bar
+physics_state_label = tb.Label(root, text="")
+physics_state_label.pack(fill=X, padx=10)
 
-# --- Bottom: Controls ---
-bottom_bar = ttk.Frame(root)
-bottom_bar.pack(fill="x", padx=10, pady=(0, 10))
+# Bottom Controls
+bottom_bar = tb.Frame(root)
+bottom_bar.pack(fill=X, padx=10, pady=(0, 10))
 
-run_button = ttk.Button(bottom_bar, text="▶️ Run")
-run_button.pack(side="left")
+run_button = tb.Button(
+    bottom_bar,
+    text="▶️ Run",
+    bootstyle=(OUTLINE, SUCCESS),
+    command=lambda: run_code()
+)
+run_button.pack(side=LEFT)
 
-status_label = ttk.Label(bottom_bar, text="💡 Write your code and press Run.")
-status_label.pack(side="left", padx=10)
+status_label = tb.Label(bottom_bar, text="💡 Write your code and press Run.")
+status_label.pack(side=LEFT, padx=10)
 
-# --- Settings Menu ---
+# Settings Menu
 settings_menu = tk.Menu(root, tearoff=0)
+
 
 def open_physics_settings():
     if hasattr(root, "active_dialog") and root.active_dialog:
         return
-    root.active_dialog = tk.Toplevel(root)
-    root.active_dialog.title("Physics Engine Settings")
-    root.active_dialog.geometry("400x300")
-    root.active_dialog.grab_set()
-    root.active_dialog.protocol("WM_DELETE_WINDOW", lambda: close_dialog())
+
+    dialog = tb.Toplevel(root)
+    dialog.title("Physics Engine Settings")
+    dialog.geometry("400x300")
+    dialog.grab_set()
+    root.active_dialog = dialog
 
     physics = config.get("physics", {})
     physics_var = tk.BooleanVar(value=physics.get("enabled", False))
@@ -102,13 +134,48 @@ def open_physics_settings():
             collision_var.set(True)
             boundary_var.set(True)
 
-    physics_frame = ttk.Frame(root.active_dialog)
+    physics_frame = tb.Frame(dialog)
     physics_frame.pack(pady=10)
-    ttk.Checkbutton(physics_frame, text="Activate Physics Engine", variable=physics_var, command=sync_all_with_main).pack()
-    ttk.Checkbutton(physics_frame, text="Gravity", variable=gravity_var, command=update_active_state).pack(anchor="w")
-    ttk.Checkbutton(physics_frame, text="Wall", variable=wall_var, command=update_active_state).pack(anchor="w")
-    ttk.Checkbutton(physics_frame, text="Collision", variable=collision_var, command=update_active_state).pack(anchor="w")
-    ttk.Checkbutton(physics_frame, text="Boundary", variable=boundary_var, command=update_active_state).pack(anchor="w")
+
+    tb.Checkbutton(
+        physics_frame,
+        text="Activate Physics Engine",
+        variable=physics_var,
+        command=sync_all_with_main,
+        bootstyle="round-toggle"
+    ).pack()
+
+    tb.Checkbutton(
+        physics_frame,
+        text="Gravity",
+        variable=gravity_var,
+        command=update_active_state,
+        bootstyle="round-toggle"
+    ).pack(anchor=W)
+
+    tb.Checkbutton(
+        physics_frame,
+        text="Wall",
+        variable=wall_var,
+        command=update_active_state,
+        bootstyle="round-toggle"
+    ).pack(anchor=W)
+
+    tb.Checkbutton(
+        physics_frame,
+        text="Collision",
+        variable=collision_var,
+        command=update_active_state,
+        bootstyle="round-toggle"
+    ).pack(anchor=W)
+
+    tb.Checkbutton(
+        physics_frame,
+        text="Boundary",
+        variable=boundary_var,
+        command=update_active_state,
+        bootstyle="round-toggle"
+    ).pack(anchor=W)
 
     def save_and_close():
         config["physics"] = {
@@ -120,53 +187,74 @@ def open_physics_settings():
         }
         save_config(config)
         update_physics_status_label()
-        close_dialog()
+        dialog.destroy()
+        root.active_dialog = None
 
-    ttk.Button(root.active_dialog, text="Save", command=save_and_close).pack(pady=10)
+    tb.Button(
+        dialog,
+        text="Save",
+        command=save_and_close,
+        bootstyle=SUCCESS
+    ).pack(pady=10)
+
+    dialog.protocol("WM_DELETE_WINDOW", save_and_close)
+
 
 def open_theme_settings():
     if hasattr(root, "active_dialog") and root.active_dialog:
         return
-    root.active_dialog = tk.Toplevel(root)
-    root.active_dialog.title("Theme Settings")
-    root.active_dialog.geometry("300x200")
-    root.active_dialog.grab_set()
-    root.active_dialog.protocol("WM_DELETE_WINDOW", lambda: close_dialog())
 
-    theme_var = tk.StringVar(value=style.theme_use())
-    ttk.Label(root.active_dialog, text="Select Theme:").pack(pady=5)
-    ttk.OptionMenu(root.active_dialog, theme_var, theme_var.get(), *style.theme_names(),
-                   command=lambda t: apply_theme_and_save(t)).pack()
+    dialog = tb.Toplevel(root)
+    dialog.title("Theme Settings")
+    dialog.geometry("300x200")
+    dialog.grab_set()
+    root.active_dialog = dialog
 
-    ttk.Button(root.active_dialog, text="Close", command=lambda: close_dialog()).pack(pady=15)
+    current_theme = root.style.theme_use()
+    theme_var = tk.StringVar(value=current_theme)
+
+    tb.Label(dialog, text="Select Theme:").pack(pady=5)
+
+    theme_menu = tb.OptionMenu(
+        dialog,
+        theme_var,
+        current_theme,
+        *root.style.theme_names(),
+        command=lambda t: apply_theme_and_save(t)
+    )
+    theme_menu.pack()
+
+    tb.Button(
+        dialog,
+        text="Close",
+        command=lambda: dialog.destroy(),
+        bootstyle=PRIMARY
+    ).pack(pady=15)
+
+    dialog.protocol("WM_DELETE_WINDOW", lambda: dialog.destroy())
+
 
 def apply_theme_and_save(theme):
-    style.theme_use(theme)
+    root.style.theme_use(theme)
     config["theme"] = theme
     save_config(config)
 
-def close_dialog():
-    if hasattr(root, "active_dialog") and root.active_dialog:
-        root.active_dialog.destroy()
-        root.active_dialog = None
 
 settings_menu.add_command(label="Theme", command=open_theme_settings)
 settings_menu.add_command(label="Physics Engine", command=open_physics_settings)
 
-settings_button = ttk.Menubutton(bottom_bar, text="⚙️ Settings", menu=settings_menu, direction="above")
-settings_button.pack(side="right")
+settings_button = tb.Menubutton(
+    bottom_bar,
+    text="⚙️ Settings",
+    menu=settings_menu,
+    bootstyle="primary"  # note the correct way is lowercase string, or use constant if defined
+)
+
+settings_button.pack(side=RIGHT)
 settings_button["menu"] = settings_menu
 
-# --- Helpers ---
-def update_physics_status_label():
-    if config.get("physics", {}).get("enabled", False):
-        active = [k.capitalize() for k, v in config.get("physics", {}).items() if k != "enabled" and v]
-        text = "Physics: " + (", ".join(active) if active else "Enabled with no components")
-    else:
-        text = "Physics: Disabled"
-    physics_state_label.config(text=text)
 
-
+# --- Code Execution Functions ---
 def is_pygame_code(code):
     lowered = code.lower()
     return "import pygame" in lowered or "from pygame" in lowered or "pygame." in lowered
@@ -191,14 +279,14 @@ def kill_process():
 def run_code():
     global previous_process, kill_requested, output_path_active
 
-    code = editor.get("1.0", tk.END)
+    code = editor.get("1.0", END)
     is_pygame = is_pygame_code(code)
 
-    shell_output.config(state="normal")
-    shell_output.delete("1.0", tk.END)
+    shell_output.config(state=NORMAL)
+    shell_output.delete("1.0", END)
     if is_pygame:
-        shell_output.insert(tk.END, "🔄 Running your code...\n")
-    shell_output.config(state="disabled")
+        shell_output.insert(END, "🔄 Running your code...\n")
+    shell_output.config(state=DISABLED)
 
     if previous_process and previous_process.poll() is None:
         try:
@@ -227,14 +315,16 @@ def run_code():
         )
 
         status_label.config(
-            text="✅ Running in separate Pygame window. Output below:" if is_pygame else "✅ Code is running...")
+            text="✅ Running in separate Pygame window. Output below:" if is_pygame
+            else "✅ Code is running..."
+        )
         run_button.config(text="❌ Kill", command=kill_process)
 
         read_output(output_path)
     except Exception as e:
-        shell_output.config(state="normal")
-        shell_output.insert(tk.END, f"❌ Error launching code: {e}\n")
-        shell_output.config(state="disabled")
+        shell_output.config(state=NORMAL)
+        shell_output.insert(END, f"❌ Error launching code: {e}\n")
+        shell_output.config(state=DISABLED)
         status_label.config(text="❌ Run failed.")
 
 
@@ -251,23 +341,20 @@ def read_output(output_path):
             file_offsets[output_path] = f.tell()
 
         if new_output:
-            shell_output.config(state="normal")
-            shell_output.insert(tk.END, new_output)
-            shell_output.config(state="disabled")
-            shell_output.see("end")
+            shell_output.config(state=NORMAL)
+            shell_output.insert(END, new_output)
+            shell_output.config(state=DISABLED)
+            shell_output.see(END)
 
     except Exception as e:
-        shell_output.config(state="normal")
-        shell_output.insert(tk.END, f"❌ Error reading output: {e}\n")
-        shell_output.config(state="disabled")
+        shell_output.config(state=NORMAL)
+        shell_output.insert(END, f"❌ Error reading output: {e}\n")
+        shell_output.config(state=DISABLED)
 
     root.after(500, lambda: read_output(output_path))
 
 
-# Assign run_code to the button after defining it
-run_button.config(command=run_code)
-
-# Update physics status on startup
+# Initialize physics status
 update_physics_status_label()
 
 # Run the app
