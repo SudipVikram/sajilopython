@@ -312,23 +312,31 @@ def open_physics_settings():
     tb.Button(dialog, text="Save", command=save, bootstyle=SUCCESS).pack(pady=10)
 
 def open_theme_settings():
+    root.attributes('-disabled', True)
     dialog = tb.Toplevel(root)
     dialog.title("Theme Settings")
-    dialog.geometry("300x160")
+    dialog.grab_set()
+    dialog.transient(root)
+    dialog.update_idletasks()
+    x = root.winfo_x() + (root.winfo_width() // 2) - (300 // 2)
+    y = root.winfo_y() + (root.winfo_height() // 2) - (160 // 2)
+    dialog.geometry(f"300x160+{x}+{y}")
+
     current_theme = root.style.theme_use()
     theme_var = tk.StringVar(value=current_theme)
 
-    tb.Label(dialog, text="Select Editor Theme:").pack(pady=10)
-    theme_dropdown = ttk.OptionMenu(dialog, theme_var, current_theme, *root.style.theme_names())
+    tb.Label(dialog, text="🎨 Select Editor Theme:").pack(pady=10)
+
+    def on_theme_change(new_theme):
+        root.style.theme_use(new_theme)
+        config["theme"] = new_theme
+        save_config(config)
+
+    theme_dropdown = ttk.OptionMenu(dialog, theme_var, current_theme, *root.style.theme_names(), command=on_theme_change)
     theme_dropdown.pack(pady=5)
 
-    def apply_and_close():
-        root.style.theme_use(theme_var.get())
-        config["theme"] = theme_var.get()
-        save_config(config)
-        dialog.destroy()
-
-    tb.Button(dialog, text="Apply", command=apply_and_close, bootstyle=SUCCESS).pack(pady=10)
+    # Handle dialog close from [X] button
+    dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
 
 def apply_theme(theme):
     root.style.theme_use(theme)
