@@ -317,14 +317,53 @@ def close_tab():
 def find_and_replace():
     tab = notebook.select()
     editor = editors.get(str(tab), {}).get("editor")
-    if not editor: return
-    find = simpledialog.askstring("Find", "Find:", parent=root)
-    replace = simpledialog.askstring("Replace", "Replace with:", parent=root)
-    if find and replace:
-        content = editor.get("1.0", "end")
-        content = content.replace(find, replace)
-        editor.delete("1.0", "end")
-        editor.insert("1.0", content)
+    if not editor:
+        return
+
+    dialog = tb.Toplevel(root)
+    dialog.title("Find and Replace")
+    dialog.geometry("400x180")
+    dialog.grab_set()
+    dialog.transient(root)
+    x = root.winfo_x() + (root.winfo_width() // 2) - 200
+    y = root.winfo_y() + (root.winfo_height() // 2) - 60
+    dialog.geometry(f"400x180+{x}+{y}")
+
+    find_var = tk.StringVar()
+    replace_var = tk.StringVar()
+
+    def do_highlight(*_):
+        editor.tag_remove("highlight", "1.0", "end")
+        term = find_var.get()
+        if not term:
+            return
+        start = "1.0"
+        while True:
+            start = editor.search(term, start, stopindex="end")
+            if not start:
+                break
+            end = f"{start}+{len(term)}c"
+            editor.tag_add("highlight", start, end)
+            start = end
+        editor.tag_config("highlight", background="yellow", foreground="black")
+
+    def do_replace():
+        find_text = find_var.get()
+        replace_text = replace_var.get()
+        if find_text:
+            content = editor.get("1.0", "end")
+            editor.delete("1.0", "end")
+            editor.insert("1.0", content.replace(find_text, replace_text))
+            do_highlight()
+
+    tb.Label(dialog, text="Find:").pack(pady=2)
+    tb.Entry(dialog, textvariable=find_var).pack(fill="x", padx=10)
+    tb.Label(dialog, text="Replace with:").pack(pady=2)
+    tb.Entry(dialog, textvariable=replace_var).pack(fill="x", padx=10)
+    tb.Button(dialog, text="Replace", command=do_replace, bootstyle=SUCCESS).pack(pady=5)
+
+    find_var.trace_add("write", do_highlight)
+    dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
 
 # --- Settings ---
 def update_physics_status():
