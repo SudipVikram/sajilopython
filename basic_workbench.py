@@ -4,22 +4,76 @@ import subprocess
 import tempfile
 import sys
 import os
+import json
 
+# --- Config Persistence ---
+CONFIG_FILE = "sajilo_config.json"
+
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as f:
+            return json.load(f)
+    return {"theme": "default"}
+
+
+def save_config(config):
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f)
+
+# --- Globals ---
 previous_process = None
-file_offsets = {}   # Tracks file position per output file
+file_offsets = {}
 output_path_active = None
 kill_requested = False
 
+
+# --- Tkinter UI Setup ---
+root = tk.Tk()
+root.title("Sajilo Python Playground")
+root.geometry("900x700")
+
+# Apply saved theme
+style = ttk.Style()
+config = load_config()
+theme_to_use = config.get("theme", "default")
+if theme_to_use in style.theme_names():
+    style.theme_use(theme_to_use)
+
+# --- Top: Editor ---
+editor = tk.Text(root, font=("Consolas", 12), height=20)
+editor.pack(fill="both", expand=True, padx=10, pady=(10, 0))
+
+# --- Middle: Shell Output ---
+shell_output = tk.Text(root, height=10, bg="#111", fg="#0f0", insertbackground="white", font=("Consolas", 11))
+shell_output.pack(fill="both", expand=False, padx=10, pady=(5, 5))
+shell_output.insert(tk.END, "💡 Shell output will appear here...\n")
+shell_output.config(state="disabled")
+
+# --- Bottom: Controls ---
+bottom_bar = ttk.Frame(root)
+bottom_bar.pack(fill="x", padx=10, pady=(0, 10))
+
+run_button = ttk.Button(bottom_bar, text="▶️ Run")
+run_button.pack(side="left")
+
+status_label = ttk.Label(bottom_bar, text="💡 Write your code and press Run.")
+status_label.pack(side="left", padx=10)
+
+settings_button = ttk.Button(bottom_bar, text="⚙️ Settings", command=lambda: open_settings())
+settings_button.pack(side="right")
+
+
+# --- Helpers ---
 def is_pygame_code(code):
     lowered = code.lower()
     return "import pygame" in lowered or "from pygame" in lowered or "pygame." in lowered
 
+
 def kill_process():
     global kill_requested, previous_process, output_path_active
-
     kill_requested = True
 
-    # Kill the running subprocess
     if previous_process and previous_process.poll() is None:
         try:
             previous_process.kill()
@@ -27,12 +81,10 @@ def kill_process():
         except Exception as e:
             status_label.config(text=f"❌ Failed to kill: {e}")
 
-    # Clear active process state
     previous_process = None
     output_path_active = None
-
-    # Update button back to "Run"
     run_button.config(text="▶️ Run", command=run_code)
+
 
 def run_code():
     global previous_process, kill_requested, output_path_active
@@ -46,7 +98,6 @@ def run_code():
         shell_output.insert(tk.END, "🔄 Running your code...\n")
     shell_output.config(state="disabled")
 
-    # Kill previous process if alive
     if previous_process and previous_process.poll() is None:
         try:
             previous_process.kill()
@@ -73,11 +124,8 @@ def run_code():
             start_new_session=True
         )
 
-        if is_pygame:
-            status_label.config(text="✅ Running in separate Pygame window. Output below:")
-        else:
-            status_label.config(text="✅ Code is running...")
-
+        status_label.config(
+            text="✅ Running in separate Pygame window. Output below:" if is_pygame else "✅ Code is running...")
         run_button.config(text="❌ Kill", command=kill_process)
 
         read_output(output_path)
@@ -87,16 +135,14 @@ def run_code():
         shell_output.config(state="disabled")
         status_label.config(text="❌ Run failed.")
 
+
 def read_output(output_path):
     global kill_requested
 
     if kill_requested or output_path != output_path_active:
-        return  # Stop polling if killed or outdated
+        return
 
     try:
-        if output_path not in file_offsets:
-            file_offsets[output_path] = 0
-
         with open(output_path, "r") as f:
             f.seek(file_offsets[output_path])
             new_output = f.read()
@@ -113,33 +159,48 @@ def read_output(output_path):
         shell_output.insert(tk.END, f"❌ Error reading output: {e}\n")
         shell_output.config(state="disabled")
 
-    # Schedule next read
     root.after(500, lambda: read_output(output_path))
 
-# --- GUI Setup ---
 
-root = tk.Tk()
-root.title("Sajilo Python Playground")
-root.geometry("800x700")
+# --- Settings Dialog ---
+def open_settings():
+    settings_win = tk.Toplevel(root)
+    settings_win.title("Editor Settings")
+    settings_win.geometry("400x300")
+    settings_win.resizable(False, False)
+    settings_win.grab_set()
 
-# Editor Frame
-editor = tk.Text(root, font=("Consolas", 12), height=20)
-editor.pack(fill="both", expand=True, padx=10, pady=(10, 0))
+    ttk.Label(settings_win, text="Select a Theme", font=("Arial", 12)).pack(pady=10)
 
-# Shell Output Frame
-shell_output = tk.Text(root, height=10, bg="#111", fg="#0f0", insertbackground="white", font=("Consolas", 11))
-shell_output.pack(fill="both", expand=False, padx=10, pady=(5, 5))
-shell_output.insert(tk.END, "💡 Shell output will appear here...\n")
-shell_output.config(state="disabled")
+    theme_var = tk.StringVar()
+    theme_var.set(style.theme_use())
 
-# Bottom Bar
-bottom_bar = ttk.Frame(root)
-bottom_bar.pack(fill="x", padx=10, pady=(0, 10))
+    def apply_theme(theme_name):
+        style.theme_use(theme_name)
+        build_preview(preview_frame)
+        config["theme"] = theme_name
+        save_config(config)
 
-run_button = ttk.Button(bottom_bar, text="▶️ Run", command=run_code)
-run_button.pack(side="left")
+    ttk.OptionMenu(settings_win, theme_var, theme_var.get(), *style.theme_names(),
+                   command=apply_theme).pack()
 
-status_label = ttk.Label(bottom_bar, text="💡 Write your code and press Run.")
-status_label.pack(side="left", padx=10)
+    ttk.Label(settings_win, text="Preview:", font=("Arial", 10, "bold")).pack(pady=10)
+    preview_frame = ttk.Frame(settings_win)
+    preview_frame.pack(pady=5)
 
+    def build_preview(parent):
+        for widget in parent.winfo_children():
+            widget.destroy()
+        ttk.Label(parent, text="Sample Label").pack(pady=2)
+        ttk.Entry(parent).pack(pady=2)
+        ttk.Button(parent, text="Sample Button").pack(pady=2)
+
+    build_preview(preview_frame)
+    ttk.Button(settings_win, text="Close", command=settings_win.destroy).pack(pady=15)
+
+
+# Assign run_code to the button after defining it
+run_button.config(command=run_code)
+
+# Run the app
 root.mainloop()
