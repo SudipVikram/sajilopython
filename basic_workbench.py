@@ -175,7 +175,7 @@ def open_media_manager():
     dialog.update_idletasks()
     x = root.winfo_x() + (root.winfo_width() // 2) - (600 // 2)
     y = root.winfo_y() + (root.winfo_height() // 2) - (400 // 2)
-    dialog.geometry(f"600x400+{x}+{y}")
+    dialog.geometry(f"800x500+{x}+{y}")
 
     canvas = tk.Canvas(dialog)
     scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=canvas.yview)
@@ -190,24 +190,42 @@ def open_media_manager():
         for widget in scroll_frame.winfo_children():
             widget.destroy()
         row = col = 0
-        for fname in os.listdir(MEDIA_FOLDER):
+        audio_row = col_audio = 0
+
+        for fname in sorted(os.listdir(MEDIA_FOLDER)):
             fpath = os.path.join(MEDIA_FOLDER, fname)
             if fname.lower().endswith((".png", ".jpg", ".gif")):
+                frame = tb.Frame(scroll_frame, relief="ridge", borderwidth=1)
+                frame.grid(row=row, column=col, padx=8, pady=8, sticky="n")
                 try:
                     img = Image.open(fpath)
                     img.thumbnail((64, 64))
                     thumb = ImageTk.PhotoImage(img)
-                    lbl = tk.Label(scroll_frame, image=thumb)
-                    lbl.image = thumb
-                    lbl.grid(row=row, column=col, padx=5, pady=5)
+                    img_lbl = tk.Label(frame, image=thumb)
+                    img_lbl.image = thumb
+                    img_lbl.pack()
                 except:
-                    continue
-            else:
-                tb.Label(scroll_frame, text=fname).grid(row=row, column=col, padx=5, pady=5)
-            col += 1
-            if col > 4:
-                col = 0
-                row += 1
+                    tb.Label(frame, text="[Error loading image]").pack()
+                tb.Label(frame, text=fname, font=("Arial", 8)).pack(pady=2)
+                tb.Button(frame, text="Delete", bootstyle=DANGER, command=lambda f=fpath: (os.remove(f), refresh())).pack(pady=2)
+                col += 1
+                if col > 4:
+                    col = 0
+                    row += 1
+
+        audio_label = tb.Label(scroll_frame, text="🎵 Audio Files", font=("Arial", 10, "bold"))
+        audio_label.grid(row=row + 1, column=0, columnspan=5, pady=(20, 5), sticky="w")
+        for fname in sorted(os.listdir(MEDIA_FOLDER)):
+            if fname.lower().endswith((".mp3", ".wav")):
+                fpath = os.path.join(MEDIA_FOLDER, fname)
+                frame = tb.Frame(scroll_frame, relief="ridge", borderwidth=1)
+                frame.grid(row=row + 2 + audio_row, column=col_audio, padx=8, pady=8, sticky="n")
+                tb.Label(frame, text=fname, font=("Arial", 9)).pack(pady=(4, 2))
+                tb.Button(frame, text="Delete", bootstyle=DANGER, command=lambda f=fpath: (os.remove(f), refresh())).pack(pady=2)
+                col_audio += 1
+                if col_audio > 4:
+                    col_audio = 0
+                    audio_row += 1
 
     def upload():
         files = filedialog.askopenfilenames(filetypes=[("Media Files", ".png .jpg .gif .mp3 .wav")])
@@ -215,8 +233,15 @@ def open_media_manager():
             shutil.copy(f, os.path.join(MEDIA_FOLDER, os.path.basename(f)))
         refresh()
 
-    tb.Button(dialog, text="Upload Media", command=upload, bootstyle=INFO).pack(pady=5)
+    upload_frame = tb.Frame(scroll_frame)
+    upload_frame.grid(row=0, column=0, columnspan=5, pady=(10, 5), sticky="w")
+    tb.Button(upload_frame, text="Upload Media", command=upload, bootstyle=INFO).pack(anchor="w")
     refresh()
+
+    upload_frame = tb.Frame(scroll_frame)
+    upload_frame.grid(row=999, column=0, columnspan=5, pady=(10, 5), sticky="w")
+    tb.Button(upload_frame, text="Upload Media", command=upload, bootstyle=INFO).pack(anchor="w")
+
     dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
 
 def open_library_manager():
