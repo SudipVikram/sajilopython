@@ -312,12 +312,23 @@ def open_physics_settings():
     tb.Button(dialog, text="Save", command=save, bootstyle=SUCCESS).pack(pady=10)
 
 def open_theme_settings():
-    theme_win = tb.Toplevel(root)
-    theme_win.title("Theme")
-    theme_var = tk.StringVar(value=root.style.theme_use())
-    for theme in root.style.theme_names():
-        tb.Radiobutton(theme_win, text=theme, variable=theme_var, value=theme,
-                       command=lambda: apply_theme(theme_var.get())).pack(anchor="w")
+    dialog = tb.Toplevel(root)
+    dialog.title("Theme Settings")
+    dialog.geometry("300x160")
+    current_theme = root.style.theme_use()
+    theme_var = tk.StringVar(value=current_theme)
+
+    tb.Label(dialog, text="Select Editor Theme:").pack(pady=10)
+    theme_dropdown = ttk.OptionMenu(dialog, theme_var, current_theme, *root.style.theme_names())
+    theme_dropdown.pack(pady=5)
+
+    def apply_and_close():
+        root.style.theme_use(theme_var.get())
+        config["theme"] = theme_var.get()
+        save_config(config)
+        dialog.destroy()
+
+    tb.Button(dialog, text="Apply", command=apply_and_close, bootstyle=SUCCESS).pack(pady=10)
 
 def apply_theme(theme):
     root.style.theme_use(theme)
