@@ -33,6 +33,7 @@ def save_config(config):
 # --- Globals ---
 previous_process = None
 kill_requested = False
+output_thread = None
 
 # --- Initialize App ---
 config = load_config()
@@ -91,21 +92,31 @@ def kill_process():
     previous_process = None
     run_button.config(text="▶️ Run", command=run_code)
 
+
 def stream_output(proc):
+    global kill_requested
     while True:
+        if kill_requested:
+            break
         line = proc.stdout.readline()
         if not line:
             break
+        if kill_requested:
+            break
         shell_output.config(state=tk.NORMAL)
-        shell_output.insert(tk.END, line.decode())
+        shell_output.insert(tk.END, line.decode(errors="ignore"))
         shell_output.see(tk.END)
         shell_output.config(state=tk.DISABLED)
-    proc.wait()
-    status_label.config(text="✅ Done." if not kill_requested else "❌ Process killed.")
+    if not kill_requested:
+        proc.wait()
+        status_label.config(text="✅ Done.")
+    else:
+        status_label.config(text="❌ Process killed.")
     run_button.config(text="▶️ Run", command=run_code)
 
+
 def run_code():
-    global previous_process, kill_requested
+    global previous_process, kill_requested, output_thread
     code = editor.get("1.0", tk.END)
     shell_output.config(state=tk.NORMAL)
     shell_output.delete("1.0", tk.END)
@@ -126,7 +137,8 @@ def run_code():
         universal_newlines=False
     )
     run_button.config(text="❌ Kill", command=kill_process)
-    threading.Thread(target=stream_output, args=(previous_process,), daemon=True).start()
+    output_thread = threading.Thread(target=stream_output, args=(previous_process,), daemon=True)
+    output_thread.start()
 
 def open_theme_settings():
     dialog = tb.Toplevel(root)
@@ -211,8 +223,6 @@ settings_button = tb.Menubutton(bottom_bar, text="⚙️ Settings", bootstyle="p
 settings_button.pack(side=tk.RIGHT)
 settings_button["menu"] = settings_menu
 
-# Initialize physics status
 update_physics_status_label()
-
 root.update()
 root.mainloop()
