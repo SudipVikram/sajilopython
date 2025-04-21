@@ -23,7 +23,7 @@ class sajilopygame:
 
         # initializing pygame
         pygame.init()
-        self.screen = pygame.display.set_mode((self.wwidth,self.wheight))
+        self.screen = pygame.display.get_surface() or pygame.display.set_mode((wwidth, wheight))
 
         # initializing time
         self.clock = pygame.time.Clock()

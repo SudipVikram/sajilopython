@@ -12,6 +12,9 @@ import json
 from _thread import interrupt_main
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
+import sajilopygame
+import subprocess
+import tempfile
 
 # Initialize pygame
 pygame.init()
@@ -316,6 +319,9 @@ class LineNumberCanvas(tk.Canvas):
         self.after(50, self.update_line_numbers)
 
 
+'''
+retired code
+
 def capture_output(code):
     if not pygame.get_init():
         return "Error: Pygame window is closed. Please reopen it from the Options menu."
@@ -326,6 +332,7 @@ def capture_output(code):
     # Create a safe execution environment
     safe_globals = {
         'bob': bob,
+        'sajilopygame': sajilopygame,
         '__builtins__': {
             'print': print,
             'range': range,
@@ -338,7 +345,8 @@ def capture_output(code):
             'dict': dict,
             'tuple': tuple,
             'set': set,
-            'bool': bool
+            'bool': bool,
+            '__import__': __import__,  # 🔥 Enables import statements!
         }
     }
 
@@ -373,6 +381,24 @@ def capture_output(code):
         return f"Error: {exec_result['error']}"
 
     return exec_result["output"] or ""
+    '''
+
+def capture_output(code):
+    try:
+        # Step 1: Create a temporary file to hold student code
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode="w", encoding="utf-8") as tmp_file:
+            tmp_file.write(code)
+            temp_file_path = tmp_file.name
+
+        # Step 2: Run the student code in a separate Python process
+        subprocess.Popen([sys.executable, temp_file_path], start_new_session=True)
+
+        # Step 3: Return message to GUI
+        return "✅ Code is running in a separate window."
+    except Exception as e:
+        return f"❌ Error while running code: {e}"
+
+
 
 
 def highlight_syntax(editor):
@@ -516,7 +542,7 @@ def workbench():
 
     # Editor Notebook
     editor_frame = ttk.Frame(left_panel)
-    left_panel.add(editor_frame, height=500)
+    #left_panel.add(editor_frame, height=500)
 
     notebook = ttk.Notebook(editor_frame)
     notebook.pack(fill="both", expand=True)
@@ -528,7 +554,18 @@ def workbench():
 
     # Shell Output
     shell_frame = ttk.Frame(left_panel)
-    left_panel.add(shell_frame, height=200)
+    #left_panel.add(shell_frame, height=200)
+
+    # improvements
+    left_panel.add(editor_frame)
+    left_panel.add(shell_frame)
+
+    # Set initial height ratio: editor gets more, shell gets less
+    left_panel.paneconfig(editor_frame, minsize=750)
+    left_panel.paneconfig(shell_frame, minsize=100)
+
+    # Optional: Resize to initial position manually
+    root.after(100, lambda: left_panel.sash_place(0, 0, 600))  # move the sash down
 
     shell = scrolledtext.ScrolledText(shell_frame, height=10, bg="black", fg="white",
                                       font=("Consolas", 12), state="disabled",
@@ -542,13 +579,13 @@ def workbench():
 
     # Add the title label
     pygame_title = tk.Label(pygame_container, text="Sajilo Python Playground",
-                            font=("Comic Sans MS", 16, "bold"), fg="#333")
+                            font=("Comic Sans MS", 16, "normal"), fg="#333")
     pygame_title.pack(pady=(10, 5))
 
     # Frame for pygame itself
     pygame_frame = tk.Frame(pygame_container, width=WIDTH, height=HEIGHT)
     pygame_frame.pack(fill="both", expand=True)
-    pygame_manager.init_pygame(pygame_frame.winfo_id())
+    #pygame_manager.init_pygame(pygame_frame.winfo_id())
 
     # Start pygame thread
     def run_pygame():
@@ -572,7 +609,7 @@ def workbench():
         except Exception as e:
             print(f"Playground error: {str(e)}")
 
-    threading.Thread(target=run_pygame, daemon=True).start()
+    #threading.Thread(target=run_pygame, daemon=True).start()
 
     # UI Functions
     def run_code():
@@ -580,6 +617,75 @@ def workbench():
         if not tab:
             return
         editor = tabs[str(tab)]['editor']
+        code = editor.get("1.0", tk.END)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode="w", encoding="utf-8") as tmp_file:
+            tmp_file.write(code)
+            temp_file_path = tmp_file.name
+        try:
+            # Launch it in a subprocess (independent Pygame window)
+            # ✅ Launch the code without blocking the GUI
+            subprocess.Popen([sys.executable, temp_file_path], start_new_session=True)
+
+            shell.config(state="normal")
+            shell.delete("1.0", "end")
+            shell.insert("insert", "✅ Running in separate Pygame window.\n")
+            shell.config(state="disabled")
+            shell.see("end")
+            status_var.set("Running in separate window...")
+
+        except Exception as e:
+            shell.config(state="normal")
+            shell.insert("insert", f"❌ Error: {e}\n")
+            shell.config(state="disabled")
+            shell.see("end")
+            status_var.set("Run failed.")
+
+        # Clear existing pygame (if any)
+        try:
+            pygame.quit()
+        except:
+            pass
+
+        # Re-initialize Pygame in the embedded frame
+        try:
+            pygame_manager.init_pygame(pygame_frame.winfo_id())
+        except Exception as e:
+            print("Failed to init pygame:", e)
+            return
+
+            # Run student code inside that embedded pygame window
+
+        def execute_student_code():
+            safe_globals = {
+                '__builtins__': {
+                    'print': print,
+                    'range': range,
+                    'len': len,
+                    'input': input,
+                    'str': str,
+                    'int': int,
+                    'float': float,
+                    'list': list,
+                    'dict': dict,
+                    'tuple': tuple,
+                    'set': set,
+                    'bool': bool,
+                    '__import__': __import__,
+                },
+                'pygame': pygame,
+                'sajilopygame': sajilopygame  # Optional: expose your library
+            }
+
+            try:
+                exec(code, safe_globals)
+            except Exception as e:
+                print("Runtime Error:", e)
+
+        threading.Thread(target=execute_student_code, daemon=True).start()
+
+        editor = tabs[str(tab)]['editor']
+
         shell.config(state="normal")
         shell.delete("1.0", "end")
         output = capture_output(editor.get("1.0", "end-1c"))
