@@ -6,44 +6,64 @@ import sys
 import os
 
 previous_process = None
-file_offsets = {}  # Tracks file position per output file
+file_offsets = {}   # Tracks file position per output file
+output_path_active = None
+kill_requested = False
 
 def is_pygame_code(code):
     lowered = code.lower()
     return "import pygame" in lowered or "from pygame" in lowered or "pygame." in lowered
 
+def kill_process():
+    global kill_requested, previous_process, output_path_active
+
+    kill_requested = True
+
+    # Kill the running subprocess
+    if previous_process and previous_process.poll() is None:
+        try:
+            previous_process.kill()
+            status_label.config(text="❌ Process killed.")
+        except Exception as e:
+            status_label.config(text=f"❌ Failed to kill: {e}")
+
+    # Clear active process state
+    previous_process = None
+    output_path_active = None
+
+    # Update button back to "Run"
+    run_button.config(text="▶️ Run", command=run_code)
+
 def run_code():
-    global previous_process
+    global previous_process, kill_requested, output_path_active
 
     code = editor.get("1.0", tk.END)
     is_pygame = is_pygame_code(code)
 
-    # Clear shell output
     shell_output.config(state="normal")
     shell_output.delete("1.0", tk.END)
     if is_pygame:
         shell_output.insert(tk.END, "🔄 Running your code...\n")
     shell_output.config(state="disabled")
 
-    # Kill previous process if it exists
+    # Kill previous process if alive
     if previous_process and previous_process.poll() is None:
         try:
             previous_process.kill()
         except Exception as e:
             print("Failed to kill previous process:", e)
 
-    # Write code to temp file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode="w", encoding="utf-8") as tmp_file:
         tmp_file.write(code)
         temp_path = tmp_file.name
 
-    # Output capture file
     output_file = tempfile.NamedTemporaryFile(delete=False, mode="w+", encoding="utf-8")
     output_path = output_file.name
     output_file.close()
 
-    # Reset offset tracker
     file_offsets[output_path] = 0
+    output_path_active = output_path
+    kill_requested = False
 
     try:
         previous_process = subprocess.Popen(
@@ -58,6 +78,8 @@ def run_code():
         else:
             status_label.config(text="✅ Code is running...")
 
+        run_button.config(text="❌ Kill", command=kill_process)
+
         read_output(output_path)
     except Exception as e:
         shell_output.config(state="normal")
@@ -66,27 +88,32 @@ def run_code():
         status_label.config(text="❌ Run failed.")
 
 def read_output(output_path):
+    global kill_requested
+
+    if kill_requested or output_path != output_path_active:
+        return  # Stop polling if killed or outdated
+
     try:
-        # Set initial offset if not already set
         if output_path not in file_offsets:
             file_offsets[output_path] = 0
 
         with open(output_path, "r") as f:
-            f.seek(file_offsets[output_path])  # Jump to last read position
+            f.seek(file_offsets[output_path])
             new_output = f.read()
-            file_offsets[output_path] = f.tell()  # Update position
+            file_offsets[output_path] = f.tell()
 
         if new_output:
             shell_output.config(state="normal")
             shell_output.insert(tk.END, new_output)
             shell_output.config(state="disabled")
             shell_output.see("end")
+
     except Exception as e:
         shell_output.config(state="normal")
         shell_output.insert(tk.END, f"❌ Error reading output: {e}\n")
         shell_output.config(state="disabled")
 
-    # Reschedule
+    # Schedule next read
     root.after(500, lambda: read_output(output_path))
 
 # --- GUI Setup ---
