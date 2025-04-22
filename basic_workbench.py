@@ -18,6 +18,18 @@ from PIL import Image, ImageTk
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 
+import re
+
+# 🟠 Define Python syntax patterns
+PY_SYNTAX_PATTERNS = {
+    "keyword": r"\b(?:def|return|if|else|elif|for|while|import|from|as|class|try|except|finally|with|lambda|yield|assert|break|continue|pass|global|nonlocal|del|raise|in|is|and|or|not)\b",
+    "builtin": r"\b(?:print|input|len|range|open|str|int|float|list|dict|set|tuple|type|isinstance|id|sum|map|filter|zip|sorted|min|max|abs|help|dir)\b",
+    "special": r"\b(?:self|True|False|None)\b",
+    "string": r"(\'[^\']*\'|\"[^\"]*\")",
+    "comment": r"#.*",
+    "number": r"\b\d+(\.\d+)?\b"
+}
+
 CONFIG_FILE = "sajilopython_workbench_config.json"
 SESSION_FILE = "last_session.json"
 LIBRARY_FOLDER = "libraries"
@@ -27,12 +39,135 @@ FAVICON = "sajilopythonplayground.png"
 os.makedirs(LIBRARY_FOLDER, exist_ok=True)
 os.makedirs(MEDIA_FOLDER, exist_ok=True)
 
+SYNTAX_THEMES = {
+    "Monokai": {
+        "keyword": "#F92672",
+        "builtin": "#A6E22E",
+        "special": "#66D9EF",
+        "comment": "#75715E",
+        "string": "#E6DB74",
+        "number": "#AE81FF"
+    },
+    "Solarized Light": {
+        "keyword": "#268BD2",
+        "builtin": "#859900",
+        "special": "#D33682",
+        "comment": "#93A1A1",
+        "string": "#2AA198",
+        "number": "#B58900"
+    },
+    "Solarized Dark": {
+        "keyword": "#268BD2",
+        "builtin": "#859900",
+        "special": "#D33682",
+        "comment": "#586E75",
+        "string": "#2AA198",
+        "number": "#B58900"
+    },
+    "Pythonic Pastel": {
+        "keyword": "#FF6F61",
+        "builtin": "#6B5B95",
+        "special": "#88B04B",
+        "comment": "#B565A7",
+        "string": "#88B04B",
+        "number": "#009B77"
+    },
+    "Soft Candy": {
+        "keyword": "#FF69B4",
+        "builtin": "#FFD700",
+        "special": "#ADFF2F",
+        "comment": "#CCCCCC",
+        "string": "#FFB6C1",
+        "number": "#00CED1"
+    },
+    "Dracula": {
+        "keyword": "#FF79C6",
+        "builtin": "#8BE9FD",
+        "special": "#BD93F9",
+        "comment": "#6272A4",
+        "string": "#F1FA8C",
+        "number": "#BD93F9"
+    },
+    "Gruvbox Dark": {
+        "keyword": "#FB4934",
+        "builtin": "#FABD2F",
+        "special": "#83A598",
+        "comment": "#928374",
+        "string": "#B8BB26",
+        "number": "#D3869B"
+    },
+    "Gruvbox Light": {
+        "keyword": "#9D0006",
+        "builtin": "#AF3A03",
+        "special": "#427B58",
+        "comment": "#7C6F64",
+        "string": "#79740E",
+        "number": "#B57614"
+    },
+    "Atom One Dark": {
+        "keyword": "#C678DD",
+        "builtin": "#61AFEF",
+        "special": "#E06C75",
+        "comment": "#5C6370",
+        "string": "#98C379",
+        "number": "#D19A66"
+    },
+    "Nord": {
+        "keyword": "#81A1C1",
+        "builtin": "#8FBCBB",
+        "special": "#88C0D0",
+        "comment": "#4C566A",
+        "string": "#A3BE8C",
+        "number": "#B48EAD"
+    },
+    "Night Owl": {
+        "keyword": "#C792EA",
+        "builtin": "#82AAFF",
+        "special": "#F78C6C",
+        "comment": "#5F7E97",
+        "string": "#C3E88D",
+        "number": "#F78C6C"
+    },
+    "Oceanic Next": {
+        "keyword": "#6699CC",
+        "builtin": "#C594C5",
+        "special": "#5FB3B3",
+        "comment": "#65737E",
+        "string": "#99C794",
+        "number": "#F99157"
+    },
+    "Tomorrow Light": {
+        "keyword": "#8959A8",
+        "builtin": "#4271AE",
+        "special": "#3E999F",
+        "comment": "#8E908C",
+        "string": "#718C00",
+        "number": "#C82829"
+    },
+    "Tomorrow Night": {
+        "keyword": "#C397D8",
+        "builtin": "#729FCF",
+        "special": "#34E2E2",
+        "comment": "#999999",
+        "string": "#8AE234",
+        "number": "#EF2929"
+    },
+    "Watermelon Pop": {
+        "keyword": "#FF4D6D",
+        "builtin": "#6A4C93",
+        "special": "#FFB997",
+        "comment": "#AAAAAA",
+        "string": "#A1C181",
+        "number": "#FF99C8"
+    }
+}
+
 # --- Load config ---
 def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r") as f:
             return json.load(f)
-    return {"theme": "flatly", "physics": {"enabled": False, "gravity": False, "wall": False, "collision": False, "boundary": False}}
+    return {"theme": "flatly", "syntax_theme": "Monokai", "physics": {"enabled": False, "gravity": False, "wall": False, "collision": False, "boundary": False}}
 
 def save_config(cfg):
     with open(CONFIG_FILE, "w") as f:
@@ -111,9 +246,10 @@ def create_editor_tab(code="", filepath=None):
                 editor.tag_add("builtin", start, end)
             elif word in SYNTAX_MAP["special"]:
                 editor.tag_add("special", start, end)
-        editor.tag_config("keyword", foreground="blue")
-        editor.tag_config("builtin", foreground="purple")
-        editor.tag_config("special", foreground="green")
+        theme_colors = SYNTAX_THEMES.get(config.get("syntax_theme", "Monokai"), {})
+
+        for token, color in theme_colors.items():
+            editor.tag_config(token, foreground=color)
 
     def update_lines(event=None):
         lines = editor.get("1.0", "end").split("\n")
@@ -410,6 +546,26 @@ def open_physics_settings():
     dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
 
 
+def highlight_editor(editor):
+    editor.tag_remove("keyword", "1.0", "end")
+    editor.tag_remove("builtin", "1.0", "end")
+    editor.tag_remove("special", "1.0", "end")
+    editor.tag_remove("comment", "1.0", "end")
+    editor.tag_remove("string", "1.0", "end")
+    editor.tag_remove("number", "1.0", "end")
+
+    theme = SYNTAX_THEMES.get(config.get("syntax_theme", "Monokai"), {})
+    text = editor.get("1.0", "end-1c")
+    for token, pattern in PY_SYNTAX_PATTERNS.items():
+        for match in re.finditer(pattern, text):
+            start = f"1.0+{match.start()}c"
+            end = f"1.0+{match.end()}c"
+            editor.tag_add(token, start, end)
+
+    for token, color in theme.items():
+        editor.tag_config(token, foreground=color)
+
+
 def open_theme_settings():
     root.attributes('-disabled', True)
     dialog = tb.Toplevel(root)
@@ -419,12 +575,33 @@ def open_theme_settings():
     dialog.update_idletasks()
     x = root.winfo_x() + (root.winfo_width() // 2) - (300 // 2)
     y = root.winfo_y() + (root.winfo_height() // 2) - (160 // 2)
-    dialog.geometry(f"300x160+{x}+{y}")
+    dialog.geometry(f"300x240+{x}+{y}")
 
     current_theme = root.style.theme_use()
     theme_var = tk.StringVar(value=current_theme)
 
+    # --- Syntax Theme Change Handler ---
+    def on_syntax_theme_change(new_theme):
+        config["syntax_theme"] = new_theme
+        save_config(config)
+        for data in editors.values():
+            highlight_editor(data["editor"])  # NEW FUNCTION to call manually
+
+    # --- GUI elements ---
+    tb.Label(dialog, text="🎨 Syntax Highlight Theme:").pack(pady=(10, 2))
+
+    syntax_theme_var = tk.StringVar(value=config.get("syntax_theme", "Monokai"))
+    theme_dropdown = ttk.OptionMenu(dialog, syntax_theme_var, syntax_theme_var.get(), *SYNTAX_THEMES.keys(),
+                                    command=on_syntax_theme_change)
+    theme_dropdown.pack(pady=5)
+
     tb.Label(dialog, text="🎨 Select Editor Theme:").pack(pady=10)
+
+    def on_syntax_theme_change(new_theme):
+        config["syntax_theme"] = new_theme
+        save_config(config)
+        for data in editors.values():
+            data["editor"].event_generate("<KeyRelease>")  # Refresh highlighting
 
     def on_theme_change(new_theme):
         root.style.theme_use(new_theme)
