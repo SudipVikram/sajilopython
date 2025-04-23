@@ -3,8 +3,9 @@ This is a library by Beyond Apogee, Nepal tailored
 for the school-level students that we educate in our
 robotics program.
 @ developer: Beyond Apogee
-@ author: Sudip Vikram Adhikari
-@ version: 1.0
+@ Author: Sudip Vikram Adhikari
+@ Version: 1.0
+@ About: Library based on OpenCV and Medidpipe
 @ license: MIT
 """
 

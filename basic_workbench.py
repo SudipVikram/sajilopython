@@ -169,6 +169,23 @@ PYTHON_KEYWORDS = [
     "float", "bool", "sum", "map", "filter", "zip", "sorted", "min", "max", "abs", "help", "dir", "type", "isinstance", "id"
 ]
 
+def center_window(win, width=900, height=700):
+    screen_width = win.winfo_screenwidth()
+    screen_height = win.winfo_screenheight()
+    x = int((screen_width / 2) - (width / 2))
+    y = int((screen_height / 2) - (height / 2))
+    win.geometry(f"{width}x{height}+{x}+{y}")
+
+
+def set_dialog_icon(dialog):
+    """
+    Sets the icon of the given dialog window to match the main favicon.
+    """
+    try:
+        dialog.iconphoto(False, tk.PhotoImage(file="sajilopythonplayground.png"))
+    except Exception as e:
+        print(f"Failed to set dialog icon: {e}")
+
 
 import re
 
@@ -225,7 +242,8 @@ def update_suggestions(event=None):
 
         if suggestions:
             suggestion_lbl.config(
-                text="Code Suggestions: " + ", ".join(suggestions[:5]) + ("..." if len(suggestions) > 5 else "")
+                text="Code Suggestions: " + ", ".join(suggestions[:5]) + ("..." if len(suggestions) > 5 else ""),
+                foreground="green"
             )
         else:
             suggestion_lbl.config(text="Code Suggestions: None")
@@ -397,6 +415,7 @@ config = load_config()
 # --- Main Window ---
 root = tb.Window(themename=config.get("theme", "flatly"))
 root.title("Sajilo Python Playground")
+center_window(root, width=900, height=700)  # Adjust width and height if needed
 root.geometry("1000x880")
 try:
     root.iconphoto(False, tk.PhotoImage(file=FAVICON))
@@ -535,6 +554,7 @@ def open_media_manager():
     x = root.winfo_x() + (root.winfo_width() // 2) - (600 // 2)
     y = root.winfo_y() + (root.winfo_height() // 2) - (400 // 2)
     dialog.geometry(f"800x500+{x}+{y}")
+    set_dialog_icon(dialog)
 
     canvas = tk.Canvas(dialog)
     scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=canvas.yview)
@@ -604,9 +624,30 @@ def open_media_manager():
 
     dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
 
+# ✅ Function to extract metadata from triple-quoted comments
+def extract_library_metadata(fpath):
+    meta = {'Author': '', 'Version': '', 'About': ''}
+    try:
+        with open(fpath, "r", encoding="utf-8") as f:
+            content = f.read()
+        match = re.search(r"(?:'''|\"\"\")(.*?)(?:'''|\"\"\")", content, re.DOTALL)
+        if match:
+            comment_block = match.group(1)
+            for line in comment_block.splitlines():
+                if line.strip().startswith("Author:"):
+                    meta['Author'] = line.split(":", 1)[1].strip()
+                elif line.strip().startswith("Version:"):
+                    meta['Version'] = line.split(":", 1)[1].strip()
+                elif line.strip().startswith("About:"):
+                    meta['About'] = line.split(":", 1)[1].strip()
+    except Exception as e:
+        print(f"Error reading metadata from {fpath}: {e}")
+    return meta
+
+# ✅ Open Library Manager function
 def open_library_manager():
     root.attributes('-disabled', True)
-    dialog = tb.Toplevel(root)
+    dialog = tk.Toplevel(root)
     dialog.title("Library Manager")
     dialog.grab_set()
     dialog.transient(root)
@@ -614,8 +655,9 @@ def open_library_manager():
     x = root.winfo_x() + (root.winfo_width() // 2) - (600 // 2)
     y = root.winfo_y() + (root.winfo_height() // 2) - (400 // 2)
     dialog.geometry(f"600x400+{x}+{y}")
+    set_dialog_icon(dialog)
 
-    frame = tb.Frame(dialog)
+    frame = tk.Frame(dialog)
     frame.pack(fill="both", expand=True)
 
     def refresh():
@@ -623,18 +665,12 @@ def open_library_manager():
             widget.destroy()
         for fname in os.listdir(LIBRARY_FOLDER):
             fpath = os.path.join(LIBRARY_FOLDER, fname)
-            with open(fpath, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-            meta = {'Author': '', 'Version': '', 'About': ''}
-            for line in lines:
-                for key in meta:
-                    if line.startswith(f"# {key}:"):
-                        meta[key] = line.split(":", 1)[1].strip()
-            row = tb.Frame(frame)
+            meta = extract_library_metadata(fpath)
+            row = tk.Frame(frame)
             row.pack(fill="x", padx=5, pady=2)
-            tb.Label(row, text=fname, width=25).pack(side="left")
-            tb.Label(row, text=f"Author: {meta['Author']}  Version: {meta['Version']}  About: {meta['About']}").pack(side="left")
-            tb.Button(row, text="Delete", bootstyle=DANGER, command=lambda f=fpath: (os.remove(f), refresh())).pack(side="right")
+            tk.Label(row, text=fname, width=25).pack(side="left")
+            tk.Label(row, text=f"Author: {meta['Author']}  Version: {meta['Version']}  About: {meta['About']}").pack(side="left")
+            tk.Button(row, text="Delete", command=lambda f=fpath: (os.remove(f), refresh())).pack(side="right")
 
     def upload():
         file = filedialog.askopenfilename(filetypes=[("Python Files", "*.py")])
@@ -642,7 +678,7 @@ def open_library_manager():
             shutil.copy(file, os.path.join(LIBRARY_FOLDER, os.path.basename(file)))
             refresh()
 
-    tb.Button(dialog, text="Upload Library", command=upload, bootstyle=SUCCESS).pack(pady=5)
+    tk.Button(dialog, text="Upload Library", command=upload).pack(pady=5)
     refresh()
     dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
 
@@ -650,6 +686,12 @@ def open_library_manager():
 def new_tab():
     create_editor_tab()
     update_status("🆕 New Tab Created")
+    tab = notebook.select()
+    editor = editors.get(str(tab), {}).get("editor")
+    if editor:
+        editor.mark_set("insert", "1.0")
+        editor.focus()
+
 
 def open_file():
     filepath = filedialog.askopenfilename(filetypes=[("Python Files", "*.py")])
@@ -737,6 +779,7 @@ def find_and_replace():
     x = root.winfo_x() + (root.winfo_width() // 2) - 200
     y = root.winfo_y() + (root.winfo_height() // 2) - 60
     dialog.geometry(f"400x180+{x}+{y}")
+    set_dialog_icon(dialog)
 
     find_var = tk.StringVar()
     replace_var = tk.StringVar()
@@ -794,6 +837,7 @@ def open_physics_settings():
     x = root.winfo_x() + (root.winfo_width() // 2) - (400 // 2)
     y = root.winfo_y() + (root.winfo_height() // 2) - (350 // 2)
     dialog.geometry(f"400x350+{x}+{y}")
+    set_dialog_icon(dialog)
 
     physics = config.get("physics", {})
     vars = {
@@ -849,6 +893,7 @@ def open_theme_settings():
     x = root.winfo_x() + (root.winfo_width() // 2) - (300 // 2)
     y = root.winfo_y() + (root.winfo_height() // 2) - (160 // 2)
     dialog.geometry(f"300x240+{x}+{y}")
+    set_dialog_icon(dialog)
 
     current_theme = root.style.theme_use()
     theme_var = tk.StringVar(value=current_theme)
@@ -917,9 +962,10 @@ def open_about_dialog():
     x = root.winfo_x() + (root.winfo_width() // 2) - (400 // 2)
     y = root.winfo_y() + (root.winfo_height() // 2) - (200 // 2)
     dialog.geometry(f"400x200+{x}+{y}")
+    set_dialog_icon(dialog)
 
     tb.Label(dialog, text="Sajilo Python Playground", font=("Helvetica", 16, "bold")).pack(pady=10)
-    tb.Label(dialog, text="Made with ❤️ at Beyond Apogee").pack()
+    tb.Label(dialog, text="Made with ❤️ at Beyond Apogee\n                   Version 0.1").pack()
     tb.Button(dialog, text="Close", command=lambda: (root.attributes('-disabled', False), dialog.destroy()), bootstyle=SECONDARY).pack(pady=15)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
 
@@ -933,6 +979,7 @@ def open_interpreter_settings():
     x = root.winfo_x() + (root.winfo_width() // 2) - (400 // 2)
     y = root.winfo_y() + (root.winfo_height() // 2) - (300 // 2)
     dialog.geometry(f"400x300+{x}+{y}")
+    set_dialog_icon(dialog)
 
     interpreters = find_python_interpreters()
     interpreter_var = tk.StringVar(value=config.get("default_interpreter", sys.executable))
@@ -1089,7 +1136,7 @@ tb.Button(toolbar, text="ℹ️ About", command=open_about_dialog, bootstyle="li
 settings_menu.add_command(label="🎨 Theme", command=open_theme_settings)
 settings_menu.add_command(label="🧲 Physics", command=open_physics_settings)
 settings_menu.add_command(label="📚 Libraries", command=open_library_manager)
-settings_menu.add_command(label="🎞️ Media", command=open_media_manager)
+settings_menu.add_command(label="📸 Media", command=open_media_manager)
 settings_menu.add_command(label="🐍 Interpreter", command=open_interpreter_settings)  # ✅ Interpreter selector added here
 
 # --- Key Bindings ---
