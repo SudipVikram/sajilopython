@@ -169,6 +169,14 @@ PYTHON_KEYWORDS = [
     "float", "bool", "sum", "map", "filter", "zip", "sorted", "min", "max", "abs", "help", "dir", "type", "isinstance", "id"
 ]
 
+def toggle_suggestions():
+    current_state = config.get("suggestions_enabled", True)
+    config["suggestions_enabled"] = not current_state
+    save_config(config)
+    status = "enabled" if config["suggestions_enabled"] else "disabled"
+    update_status(f"💡 Code suggestions {status}")
+
+
 def center_and_resize_window(win, default_width=900, default_height=700, margin=50):
     win.update_idletasks()
 
@@ -236,9 +244,6 @@ def set_dialog_icon(dialog):
     except Exception as e:
         print(f"Failed to set dialog icon: {e}")
 
-
-import re
-
 def get_current_word(editor):
     try:
         index = editor.index("insert")
@@ -264,6 +269,10 @@ def update_suggestions(event=None):
     tab = notebook.select()
     editor = editors.get(str(tab), {}).get("editor")
     if not editor:
+        return
+
+    if not config.get("suggestions_enabled", True):
+        suggestion_lbl.config(text="Code Suggestions: Disabled")
         return
 
     update_object_map(editor)
@@ -298,12 +307,6 @@ def update_suggestions(event=None):
         else:
             suggestion_lbl.config(text="Code Suggestions: None")
 
-
-
-
-
-
-import os
 
 def get_functions_from_libraries():
     function_names = []
@@ -1256,6 +1259,7 @@ settings_menu.add_command(label="🧲 Physics", command=open_physics_settings)
 settings_menu.add_command(label="📚 Libraries", command=open_library_manager)
 settings_menu.add_command(label="📸 Media", command=open_media_manager)
 settings_menu.add_command(label="🐍 Interpreter", command=open_interpreter_settings)  # ✅ Interpreter selector added here
+settings_menu.add_command(label="💡 Toggle Suggestions", command=toggle_suggestions)
 
 # --- Key Bindings ---
 root.bind("<Control-n>", lambda e: new_tab())
