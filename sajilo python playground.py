@@ -518,13 +518,51 @@ def create_editor_tab(code="", filepath=None):
     line_numbers.pack(side="left", fill="y")
     text_frame = tk.Frame(frame)
     text_frame.pack(side="right", fill="both", expand=True)
-    editor = tk.Text(text_frame, wrap="none", font=("Consolas", 12), undo=True, tabs=(Font(font=("Consolas", 12)).measure('    '),))
-    editor.pack(fill="x", side="left")
+    # ✅ Create the editor WITHOUT expand initially
+    editor = tk.Text(
+        text_frame, wrap="none", font=("Consolas", 12), undo=True,
+        tabs=(Font(font=("Consolas", 12)).measure('    '),)
+    )
+    # ✅ Create the editor WITHOUT expand initially
+    editor = tk.Text(
+        text_frame, wrap="none", font=("Consolas", 12), undo=True,
+        tabs=(Font(font=("Consolas", 12)).measure('    '),)
+    )
+    editor.pack(fill="both", side="left", expand=True)
     editor.config(height=21)  # You can adjust '20' to reduce or increase the height (lines of text)
     vscroll = tk.Scrollbar(text_frame, command=editor.yview)
     vscroll.pack(side="right", fill="y")
+
+    hscroll = tk.Scrollbar(text_frame, orient="horizontal", command=editor.xview)
+    hscroll.pack(side="bottom", fill="x")
+    editor.configure(xscrollcommand=hscroll.set)
+
+    # ✅ Ensure cursor is visible when pressing Enter near the bottom
+    def ensure_cursor_visible(event=None):
+        editor.see("insert")
+
+    editor.bind("<Return>", ensure_cursor_visible)
+    editor.bind("<<Paste>>", ensure_cursor_visible)
+
     editor.configure(yscrollcommand=lambda *args: (vscroll.set(*args), line_numbers.yview_moveto(args[0])))
     line_numbers.configure(yscrollcommand=vscroll.set)
+
+    # Throttled line number update
+    def update_line_numbers():
+        line_numbers.config(state='normal')
+        line_numbers.delete("1.0", "end")
+        total_lines = editor.index('end-1c').split('.')[0]
+        line_numbers_text = "\n".join(str(i) for i in range(1, int(total_lines) + 1))
+        line_numbers.insert("1.0", line_numbers_text)
+        line_numbers.config(state='disabled')
+
+    def schedule_line_number_update(event=None):
+        if hasattr(editor, 'line_number_update_id'):
+            editor.after_cancel(editor.line_number_update_id)
+        editor.line_number_update_id = editor.after(150, update_line_numbers)  # 150ms delay
+
+    # Bind throttled update instead of direct update
+    editor.bind("<KeyRelease>", schedule_line_number_update)
 
     def highlight(event=None):
         editor.tag_remove("keyword", "1.0", "end")
@@ -563,6 +601,19 @@ def create_editor_tab(code="", filepath=None):
         editor.tag_remove("active_line", "1.0", "end")
         editor.tag_add("active_line", "insert linestart", "insert lineend+1c")
         editor.tag_config("active_line", background="#e9efff")
+
+    def handle_paste(event=None):
+        try:
+            editor.config(undo=False)
+            editor.insert(tk.INSERT, root.clipboard_get())
+        except Exception as e:
+            print(f"Paste Error: {e}")
+        finally:
+            editor.config(undo=True)
+        schedule_line_number_update()
+        return "break"  # Prevent double pasting
+
+    editor.bind("<<Paste>>", handle_paste)
 
     editor.bind("<KeyRelease>", lambda e: (highlight(), update_lines(), highlight_line(), mark_unsaved(notebook.select())))
     editor.bind("<ButtonRelease>", highlight_line)
