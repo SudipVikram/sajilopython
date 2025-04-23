@@ -202,11 +202,11 @@ def update_suggestions(event=None):
 
     if current_object and current_object in object_map:
         class_name = object_map[current_object]
-        methods = get_class_methods(class_name)
-        # Filter methods based on the current prefix being typed after the dot
-        suggestions = [m for m in methods if m.startswith(prefix)]
+        methods, properties = get_class_members(class_name)
+        combined = methods + properties
+        suggestions = [m for m in combined if m.startswith(prefix)]
         suggestion_lbl.config(
-            text="Methods: " + ", ".join(suggestions[:5]) + ("..." if len(suggestions) > 5 else "")
+            text="Methods/Properties: " + ", ".join(suggestions[:5]) + ("..." if len(suggestions) > 5 else "")
         )
     else:
         word = get_current_word(editor)
@@ -214,13 +214,17 @@ def update_suggestions(event=None):
             suggestion_lbl.config(text="Code Suggestions: ")
             return
 
-        suggestions = [kw for kw in PYTHON_KEYWORDS if word.lower() in kw.lower()]
+        class_suggestions = [cls for cls in get_classes_from_libraries() if word.lower() in cls.lower()]
+        keyword_suggestions = [kw for kw in PYTHON_KEYWORDS if word.lower() in kw.lower()]
+        suggestions = class_suggestions + keyword_suggestions
+
         if suggestions:
             suggestion_lbl.config(
                 text="Code Suggestions: " + ", ".join(suggestions[:5]) + ("..." if len(suggestions) > 5 else "")
             )
         else:
             suggestion_lbl.config(text="Code Suggestions: None")
+
 
 
 
@@ -298,6 +302,28 @@ def detect_current_object_and_prefix(editor):
 
 
 
+def get_classes_from_libraries():
+    """
+    Returns a list of class names defined inside all .py files within LIBRARY_FOLDER.
+    """
+    class_names = []
+    if not os.path.exists(LIBRARY_FOLDER):
+        return class_names
+
+    for fname in os.listdir(LIBRARY_FOLDER):
+        if fname.endswith(".py"):
+            fpath = os.path.join(LIBRARY_FOLDER, fname)
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                classes = re.findall(r"^\s*class\s+([a-zA-Z_]\w*)\s*(\(|:)", content, re.MULTILINE)
+                class_names.extend([cls[0] for cls in classes])
+            except Exception as e:
+                print(f"Error reading {fname}: {e}")
+    return class_names
+
+
+
 def get_class_methods(class_name):
     methods = []
     for fname in os.listdir(LIBRARY_FOLDER):
@@ -309,6 +335,45 @@ def get_class_methods(class_name):
             if class_block:
                 methods += re.findall(r"\n\s+def\s+(\w+)\s*\(", class_block.group(1))
     return methods
+
+
+def get_class_members(class_name):
+    """
+    Extract method names with parameters and class properties (variables)
+    from a class inside the libraries folder.
+    """
+    methods = []
+    properties = []
+
+    if not os.path.exists(LIBRARY_FOLDER):
+        return methods, properties
+
+    for fname in os.listdir(LIBRARY_FOLDER):
+        if fname.endswith(".py"):
+            fpath = os.path.join(LIBRARY_FOLDER, fname)
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+                # Extract the full class block more reliably
+                class_pattern = rf"class\s+{class_name}\s*(\(|:)[\s\S]*?(?=\nclass\s|\Z)"
+                class_blocks = re.findall(class_pattern, content, re.MULTILINE)
+
+                # Process each block
+                for class_block in class_blocks:
+                    # Method detection with parameters
+                    method_matches = re.findall(r"^\s+def\s+([a-zA-Z_]\w*)\s*\((.*?)\):", content, re.MULTILINE)
+                    for method, params in method_matches:
+                        full_signature = f"{method}({params})"
+                        methods.append(full_signature)
+
+                    # Property detection
+                    properties += re.findall(r"self\.(\w+)\s*=", content)
+            except Exception as e:
+                print(f"Error reading {fname}: {e}")
+
+    return methods, properties
+
 
 
 # --- Load config ---
