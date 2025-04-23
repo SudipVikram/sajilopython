@@ -1157,9 +1157,14 @@ def run_code():
     kill_requested = False
     interpreter = config.get("default_interpreter", sys.executable)
 
+    # ✅ Add libraries folder to PYTHONPATH
+    library_path = os.path.abspath("libraries")
+    env = os.environ.copy()
+    existing_path = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = library_path + (os.pathsep + existing_path if existing_path else "")
 
     CREATE_NO_WINDOW = 0x08000000
-    proc = subprocess.Popen([interpreter, path], creationflags=CREATE_NO_WINDOW, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    proc = subprocess.Popen([interpreter, path], env=env, creationflags=CREATE_NO_WINDOW, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     previous_process = proc
 
     def stream():
