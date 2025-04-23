@@ -206,8 +206,11 @@ def update_suggestions(event=None):
         combined = methods + properties
         suggestions = [m for m in combined if m.startswith(prefix)]
         suggestion_lbl.config(
-            text="Methods/Properties: " + ", ".join(suggestions[:5]) + ("..." if len(suggestions) > 5 else "")
+            text="Methods/Properties: " + ", ".join(suggestions[:5]) + ("..." if len(suggestions) > 5 else ""),
+            font=("Arial", 10),
+            foreground="green"
         )
+
     else:
         word = get_current_word(editor)
         if not word:
