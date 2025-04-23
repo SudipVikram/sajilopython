@@ -308,7 +308,13 @@ def update_suggestions(event=None):
             suggestion_lbl.config(text="Code Suggestions: None")
 
 
+library_functions_cache = {}
+
 def get_functions_from_libraries():
+    global library_functions_cache
+    if library_functions_cache:
+        return library_functions_cache  # ✅ Return from cache if available
+
     function_names = []
     if not os.path.exists(LIBRARY_FOLDER):
         return function_names  # Return empty if folder doesn't exist
@@ -321,6 +327,7 @@ def get_functions_from_libraries():
                 # Extract functions with regex
                 functions = re.findall(r"^\s*def\s+([a-zA-Z_]\w*)\s*\(", content, re.MULTILINE)
                 function_names.extend(functions)
+                library_functions_cache = function_names  # ✅ Save to cache
             except Exception as e:
                 print(f"Error reading {fname}: {e}")
     return function_names
@@ -784,6 +791,7 @@ def open_library_manager():
         file = filedialog.askopenfilename(filetypes=[("Python Files", "*.py")])
         if file:
             shutil.copy(file, os.path.join(LIBRARY_FOLDER, os.path.basename(file)))
+            library_functions_cache = {}  # Clear cache on library update
             refresh()
 
     tk.Button(dialog, text="Upload Library", command=upload).pack(pady=5)
