@@ -169,6 +169,40 @@ PYTHON_KEYWORDS = [
     "float", "bool", "sum", "map", "filter", "zip", "sorted", "min", "max", "abs", "help", "dir", "type", "isinstance", "id"
 ]
 
+# Add interpreter check at startup
+def check_interpreter():
+    interpreter = config.get("default_interpreter", None)
+    if not interpreter or not os.path.exists(interpreter):
+        run_btn.config(state="disabled")
+        messagebox.showwarning("Interpreter Not Set", "Please select a valid Python interpreter from Settings > Interpreter.")
+        open_interpreter_settings()
+    else:
+        run_btn.config(state="normal")
+
+# Interpreter selection function
+def apply_selected_interpreter(selected_path):
+    config["default_interpreter"] = selected_path
+    save_config(config)
+    check_interpreter()
+
+# Interpreter settings dialog
+def open_interpreter_settings():
+    dialog = tk.Toplevel(root)
+    dialog.title("Select Python Interpreter")
+    dialog.grab_set()
+    dialog.transient(root)
+
+    tk.Label(dialog, text="Select your Python Interpreter:").pack(pady=10)
+
+    def browse_interpreter():
+        path = filedialog.askopenfilename(filetypes=[("Python Executable", "python.exe")])
+        if path:
+            apply_selected_interpreter(path)
+            dialog.destroy()
+
+    tk.Button(dialog, text="Browse", command=browse_interpreter).pack(pady=5)
+    tk.Button(dialog, text="Cancel", command=dialog.destroy).pack(pady=5)
+
 def center_window(win, width=900, height=700):
     screen_width = win.winfo_screenwidth()
     screen_height = win.winfo_screenheight()
@@ -457,6 +491,9 @@ SYNTAX_MAP = {
     "builtin": BUILTINS,
     "special": ["print", "input"]
 }
+
+# Call this at the end of your setup, after all widgets including run_btn are initialized
+check_interpreter()
 
 # --- Editor Tab ---
 def create_editor_tab(code="", filepath=None):
@@ -938,7 +975,7 @@ def apply_theme(theme):
     save_config(config)
 
 def find_python_interpreters():
-    possible_names = ["python", "python3", "python3.10", "python3.9", "python3.8"]
+    possible_names = ["python", "python3", "python3.11", "python3.10", "python3.9", "python3.8"]
     interpreters = []
     for name in possible_names:
         path = shutil.which(name)
@@ -1015,6 +1052,15 @@ def open_interpreter_settings():
 # --- Run Button ---
 def run_code():
     global previous_process, kill_requested
+
+    interpreter = config.get("default_interpreter", None)
+    if not interpreter or not os.path.exists(interpreter):
+        update_status("❌ No valid Python interpreter selected.")
+        messagebox.showerror("Interpreter Not Set", "Please select a valid Python interpreter from Settings > Interpreter before running code.")
+        run_btn.config(state="disabled")
+        open_interpreter_settings()
+        return
+
     tab = notebook.select()
     editor = editors.get(str(tab), {}).get("editor")
     if not editor:
