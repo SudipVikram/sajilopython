@@ -189,7 +189,9 @@ def get_current_word(editor):
     except tk.TclError:
         return ""
 
-
+def update_status(message):
+    status_lbl.config(text=message)
+    status_lbl.after(3000, lambda: status_lbl.config(text="Ready"))  # Clears message after 3 secondsup
 
 def update_suggestions(event=None):
     tab = notebook.select()
@@ -645,7 +647,9 @@ def open_library_manager():
     dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
 
 # --- Toolbar Actions ---
-def new_tab(): create_editor_tab()
+def new_tab():
+    create_editor_tab()
+    update_status("🆕 New Tab Created")
 
 def open_file():
     filepath = filedialog.askopenfilename(filetypes=[("Python Files", "*.py")])
@@ -665,12 +669,59 @@ def save_file():
         notebook.tab(tab, text=os.path.basename(filepath))
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(data["editor"].get("1.0", "end"))
+        update_status("✅ File Saved Successfully")
 
 def close_tab():
     tab = notebook.select()
     if tab:
         editors.pop(str(tab), None)
         notebook.forget(tab)
+        update_status("❎ Tab Closed")
+
+def copy_code():
+    tab = notebook.select()
+    editor = editors.get(str(tab), {}).get("editor")
+    if not editor:
+        return
+    try:
+        editor.event_generate("<<Copy>>")
+        update_status("📋 Code Copied")
+    except Exception as e:
+        update_status(f"Error copying: {e}")
+
+def paste_code():
+    tab = notebook.select()
+    editor = editors.get(str(tab), {}).get("editor")
+    if not editor:
+        return
+    try:
+        editor.event_generate("<<Paste>>")
+        update_status("📌 Code Pasted")
+    except Exception as e:
+        update_status(f"Error pasting: {e}")
+
+def undo_code():
+    tab = notebook.select()
+    editor = editors.get(str(tab), {}).get("editor")
+    if not editor:
+        return
+    try:
+        editor.event_generate("<<Undo>>")
+        update_status("↩️ Undo Performed")
+    except Exception as e:
+        update_status(f"Error undoing: {e}")
+
+def redo_code():
+    tab = notebook.select()
+    editor = editors.get(str(tab), {}).get("editor")
+    if not editor:
+        return
+    try:
+        editor.event_generate("<<Redo>>")
+        update_status("➡️ Redo Performed")
+    except Exception as e:
+        update_status(f"Error redoing: {e}")
+
 
 def find_and_replace():
     tab = notebook.select()
@@ -1049,6 +1100,12 @@ root.bind("<Control-w>", lambda e: close_tab())
 root.bind("<Control-f>", lambda e: find_and_replace())
 root.bind("<F5>", lambda e: run_code())
 root.protocol("WM_DELETE_WINDOW", lambda: (save_session(), root.destroy()))
+
+root.bind("<Control-c>", lambda e: copy_code())
+root.bind("<Control-v>", lambda e: paste_code())
+root.bind("<Control-z>", lambda e: undo_code())
+root.bind("<Control-y>", lambda e: redo_code())
+
 
 # --- Boot ---
 update_physics_status()
