@@ -169,6 +169,22 @@ PYTHON_KEYWORDS = [
     "float", "bool", "sum", "map", "filter", "zip", "sorted", "min", "max", "abs", "help", "dir", "type", "isinstance", "id"
 ]
 
+def center_and_resize_window(win, default_width=900, default_height=700, margin=50):
+    win.update_idletasks()
+
+    screen_width = win.winfo_screenwidth()
+    screen_height = win.winfo_screenheight()
+
+    # Adjust height if screen is smaller than default window height
+    final_width = min(default_width, screen_width - margin)
+    final_height = min(default_height, screen_height - margin)
+
+    x = (screen_width // 2) - (final_width // 2)
+    y = (screen_height // 2) - (final_height // 2)
+
+    win.geometry(f"{final_width}x{final_height}+{x}+{y}")
+
+
 # Add interpreter check at startup
 def check_interpreter():
     interpreter = config.get("default_interpreter", None)
@@ -450,7 +466,7 @@ config = load_config()
 root = tb.Window(themename=config.get("theme", "flatly"))
 root.title("Sajilo Python Playground")
 center_window(root, width=900, height=700)  # Adjust width and height if needed
-root.geometry("1000x880")
+root.geometry("1000x810")
 try:
     root.iconphoto(False, tk.PhotoImage(file=FAVICON))
 except:
@@ -503,7 +519,8 @@ def create_editor_tab(code="", filepath=None):
     text_frame = tk.Frame(frame)
     text_frame.pack(side="right", fill="both", expand=True)
     editor = tk.Text(text_frame, wrap="none", font=("Consolas", 12), undo=True, tabs=(Font(font=("Consolas", 12)).measure('    '),))
-    editor.pack(fill="both", expand=True, side="left")
+    editor.pack(fill="x", side="left")
+    editor.config(height=21)  # You can adjust '20' to reduce or increase the height (lines of text)
     vscroll = tk.Scrollbar(text_frame, command=editor.yview)
     vscroll.pack(side="right", fill="y")
     editor.configure(yscrollcommand=lambda *args: (vscroll.set(*args), line_numbers.yview_moveto(args[0])))
