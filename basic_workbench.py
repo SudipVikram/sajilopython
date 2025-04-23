@@ -764,15 +764,45 @@ def mark_unsaved(tab_id):
 def confirm_on_exit():
     unsaved = list(unsaved_tabs)
     if unsaved:
-        confirm = messagebox.askyesnocancel("Unsaved Changes", "You have unsaved tabs. Do you want to save them before exiting?")
-        if confirm is None:
-            return  # Cancel
-        if confirm:
+        # Create a custom dialog box for confirmation
+        confirm_dialog = tb.Toplevel(root)
+        confirm_dialog.title("Unsaved Changes")
+        confirm_dialog.grab_set()
+        confirm_dialog.transient(root)
+        confirm_dialog.update_idletasks()
+
+        # Center the dialog on screen
+        width, height = 350, 150
+        x = root.winfo_x() + (root.winfo_width() // 2) - (width // 2)
+        y = root.winfo_y() + (root.winfo_height() // 2) - (height // 2)
+        confirm_dialog.geometry(f"{width}x{height}+{x}+{y}")
+
+        tb.Label(confirm_dialog, text="You have unsaved tabs.\nDo you want to save them before exiting?", wraplength=280).pack(pady=20)
+
+        def save_and_exit():
             for tab_id in unsaved:
                 notebook.select(tab_id)
                 save_file()
-    save_session()
-    root.destroy()
+            save_session()
+            confirm_dialog.destroy()
+            root.destroy()
+
+        def exit_without_save():
+            save_session()
+            confirm_dialog.destroy()
+            root.destroy()
+
+        def cancel_exit():
+            confirm_dialog.destroy()
+
+        button_frame = tb.Frame(confirm_dialog)
+        button_frame.pack(pady=10)
+        tb.Button(button_frame, text="Save & Exit", command=save_and_exit, bootstyle=SUCCESS).pack(side=tk.LEFT, padx=5)
+        tb.Button(button_frame, text="Exit Without Save", command=exit_without_save, bootstyle=DANGER).pack(side=tk.LEFT, padx=5)
+        tb.Button(button_frame, text="Cancel", command=cancel_exit, bootstyle=WARNING).pack(side=tk.LEFT, padx=5)
+    else:
+        save_session()
+        root.destroy()
 
 # --- Toolbar Buttons ---
 tb.Button(toolbar, text="🆕 New", command=new_tab, bootstyle=INFO).pack(side=tk.LEFT, padx=2)
