@@ -169,40 +169,63 @@ PYTHON_KEYWORDS = [
     "float", "bool", "sum", "map", "filter", "zip", "sorted", "min", "max", "abs", "help", "dir", "type", "isinstance", "id"
 ]
 
+
+import re
+
+def get_current_word(editor):
+    try:
+        index = editor.index("insert")
+        line_start = editor.index(f"{index} linestart")
+        text_line = editor.get(line_start, index)
+
+        # Check for object.method pattern
+        object_match = re.search(r"(\w+)\.$", text_line.strip())
+        if object_match:
+            return object_match.group(1)  # Return the object name (e.g., "oc")
+
+        # Fallback: get last word if not in object.method form
+        word = re.split(r'\W+', text_line)[-1]
+        return word
+    except tk.TclError:
+        return ""
+
+
+
 def update_suggestions(event=None):
     tab = notebook.select()
     editor = editors.get(str(tab), {}).get("editor")
     if not editor:
         return
 
-    try:
-        def get_current_word(editor):
-            index = editor.index("insert")
-            line_start = editor.index(f"{index} linestart")
-            text_line = editor.get(line_start, index)
-            word = re.split(r'\W+', text_line)[-1]  # Splits on non-word characters, takes last word
-            return word
+    update_object_map(editor)
+    current_object, prefix = detect_current_object_and_prefix(editor)
 
-        # Then inside update_suggestions:
+    if current_object and current_object in object_map:
+        class_name = object_map[current_object]
+        methods = get_class_methods(class_name)
+        # Filter methods based on the current prefix being typed after the dot
+        suggestions = [m for m in methods if m.startswith(prefix)]
+        suggestion_lbl.config(
+            text="Methods: " + ", ".join(suggestions[:5]) + ("..." if len(suggestions) > 5 else "")
+        )
+    else:
         word = get_current_word(editor)
-
         if not word:
             suggestion_lbl.config(text="Code Suggestions: ")
             return
 
-        # Combine Python keywords + extracted library functions
-        library_functions = get_functions_from_libraries()
-        suggestions = [kw for kw in PYTHON_KEYWORDS + library_functions if word.lower() in kw.lower()]
+        suggestions = [kw for kw in PYTHON_KEYWORDS if word.lower() in kw.lower()]
         if suggestions:
             suggestion_lbl.config(
-                text="Code Suggestions: " + ", ".join(suggestions[:5]) + ("..." if len(suggestions) > 5 else ""))
+                text="Code Suggestions: " + ", ".join(suggestions[:5]) + ("..." if len(suggestions) > 5 else "")
+            )
         else:
             suggestion_lbl.config(text="Code Suggestions: None")
-    except tk.TclError:
-        suggestion_lbl.config(text="Code Suggestions: ")
 
 
-import re
+
+
+
 import os
 
 def get_functions_from_libraries():
@@ -221,6 +244,72 @@ def get_functions_from_libraries():
             except Exception as e:
                 print(f"Error reading {fname}: {e}")
     return function_names
+
+library_function_cache = []
+
+def cache_library_functions():
+    global library_function_cache
+    library_function_cache.clear()
+
+    if not os.path.exists(LIBRARY_FOLDER):
+        return
+
+    for fname in os.listdir(LIBRARY_FOLDER):
+        if fname.endswith(".py"):
+            fpath = os.path.join(LIBRARY_FOLDER, fname)
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                # Extract function names using regex
+                functions = re.findall(r"^\s*def\s+([a-zA-Z_]\w*)\s*\(", content, re.MULTILINE)
+                library_function_cache.extend(functions)
+            except Exception as e:
+                print(f"Error reading {fname}: {e}")
+
+def get_functions_from_libraries():
+    return library_function_cache
+
+cache_library_functions()
+
+import re
+
+object_map = {}
+
+def update_object_map(editor):
+    code = editor.get("1.0", "end")
+    object_map.clear()
+    # Find lines like: oc = sajilocv()
+    matches = re.findall(r"(\w+)\s*=\s*(\w+)\s*\(", code)
+    for var, cls in matches:
+        object_map[var] = cls
+
+
+def detect_current_object_and_prefix(editor):
+    """
+    Detects object name before the dot and the prefix being typed after the dot.
+    Example: oc.roam_ → returns ("oc", "roam_")
+    """
+    line_start = editor.index("insert linestart")
+    current_line = editor.get(line_start, "insert")
+    match = re.search(r"(\w+)\.(\w*)$", current_line.strip())
+    if match:
+        return match.group(1), match.group(2)
+    return None, None
+
+
+
+def get_class_methods(class_name):
+    methods = []
+    for fname in os.listdir(LIBRARY_FOLDER):
+        if fname.endswith(".py"):
+            with open(os.path.join(LIBRARY_FOLDER, fname), "r", encoding="utf-8") as f:
+                content = f.read()
+            # Look for class and its methods
+            class_block = re.search(rf"class\s+{class_name}\s*.*?:((?:\n\s+.+)+)", content)
+            if class_block:
+                methods += re.findall(r"\n\s+def\s+(\w+)\s*\(", class_block.group(1))
+    return methods
+
 
 # --- Load config ---
 def load_config():
@@ -432,6 +521,7 @@ def open_media_manager():
         for f in files:
             shutil.copy(f, os.path.join(MEDIA_FOLDER, os.path.basename(f)))
         refresh()
+        cache_library_functions()
 
     upload_frame = tb.Frame(scroll_frame)
     upload_frame.grid(row=0, column=0, columnspan=5, pady=(10, 5), sticky="w")
