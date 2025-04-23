@@ -162,6 +162,66 @@ SYNTAX_THEMES = {
     }
 }
 
+PYTHON_KEYWORDS = [
+    "def", "return", "if", "elif", "else", "for", "while", "break", "continue", "pass", "import", "from", "as",
+    "class", "try", "except", "finally", "with", "lambda", "yield", "assert", "global", "nonlocal", "del", "raise",
+    "True", "False", "None", "print", "len", "input", "open", "range", "list", "dict", "set", "tuple", "str", "int",
+    "float", "bool", "sum", "map", "filter", "zip", "sorted", "min", "max", "abs", "help", "dir", "type", "isinstance", "id"
+]
+
+def update_suggestions(event=None):
+    tab = notebook.select()
+    editor = editors.get(str(tab), {}).get("editor")
+    if not editor:
+        return
+
+    try:
+        def get_current_word(editor):
+            index = editor.index("insert")
+            line_start = editor.index(f"{index} linestart")
+            text_line = editor.get(line_start, index)
+            word = re.split(r'\W+', text_line)[-1]  # Splits on non-word characters, takes last word
+            return word
+
+        # Then inside update_suggestions:
+        word = get_current_word(editor)
+
+        if not word:
+            suggestion_lbl.config(text="Code Suggestions: ")
+            return
+
+        # Combine Python keywords + extracted library functions
+        library_functions = get_functions_from_libraries()
+        suggestions = [kw for kw in PYTHON_KEYWORDS + library_functions if word.lower() in kw.lower()]
+        if suggestions:
+            suggestion_lbl.config(
+                text="Code Suggestions: " + ", ".join(suggestions[:5]) + ("..." if len(suggestions) > 5 else ""))
+        else:
+            suggestion_lbl.config(text="Code Suggestions: None")
+    except tk.TclError:
+        suggestion_lbl.config(text="Code Suggestions: ")
+
+
+import re
+import os
+
+def get_functions_from_libraries():
+    function_names = []
+    if not os.path.exists(LIBRARY_FOLDER):
+        return function_names  # Return empty if folder doesn't exist
+    for fname in os.listdir(LIBRARY_FOLDER):
+        if fname.endswith(".py"):
+            fpath = os.path.join(LIBRARY_FOLDER, fname)
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                # Extract functions with regex
+                functions = re.findall(r"^\s*def\s+([a-zA-Z_]\w*)\s*\(", content, re.MULTILINE)
+                function_names.extend(functions)
+            except Exception as e:
+                print(f"Error reading {fname}: {e}")
+    return function_names
+
 # --- Load config ---
 def load_config():
     if os.path.exists(CONFIG_FILE):
@@ -205,6 +265,8 @@ run_btn = tb.Button(bottom_bar, text="▶️ Run", bootstyle=DANGER)
 run_btn.pack(side=tk.LEFT)
 status_lbl = tb.Label(bottom_bar, text="💡 Write your code and press Run.")
 status_lbl.pack(side=tk.LEFT, padx=10)
+suggestion_lbl = tb.Label(bottom_bar, text="Code Suggestions: ", anchor="w")
+suggestion_lbl.pack(side=tk.LEFT, padx=5)
 settings_menu = tk.Menu(root, tearoff=0)
 settings_btn = tb.Menubutton(bottom_bar, text="⚙️ Settings", bootstyle=PRIMARY, menu=settings_menu)
 settings_btn.pack(side=tk.RIGHT)
@@ -227,8 +289,6 @@ def create_editor_tab(code="", filepath=None):
     text_frame.pack(side="right", fill="both", expand=True)
     editor = tk.Text(text_frame, wrap="none", font=("Consolas", 12), undo=True, tabs=(Font(font=("Consolas", 12)).measure('    '),))
     editor.pack(fill="both", expand=True, side="left")
-    editor.focus_set()
-    editor.mark_set("insert", "1.0")
     vscroll = tk.Scrollbar(text_frame, command=editor.yview)
     vscroll.pack(side="right", fill="y")
     editor.configure(yscrollcommand=lambda *args: (vscroll.set(*args), line_numbers.yview_moveto(args[0])))
@@ -274,6 +334,8 @@ def create_editor_tab(code="", filepath=None):
 
     editor.bind("<KeyRelease>", lambda e: (highlight(), update_lines(), highlight_line(), mark_unsaved(notebook.select())))
     editor.bind("<ButtonRelease>", highlight_line)
+    editor.bind("<KeyRelease>", update_suggestions, add='+')
+    editor.bind("<ButtonRelease>", update_suggestions, add='+')
     editor.bind("<Return>", auto_indent)
     editor.insert("1.0", code)
     highlight()
