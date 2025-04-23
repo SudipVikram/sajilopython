@@ -167,7 +167,7 @@ def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r") as f:
             return json.load(f)
-    return {"theme": "flatly", "syntax_theme": "Monokai", "physics": {"enabled": False, "gravity": False, "wall": False, "collision": False, "boundary": False}}
+    return {"theme": "flatly", "syntax_theme": "Monokai", "default_interpreter": sys.executable, "physics": {"enabled": False, "gravity": False, "wall": False, "collision": False, "boundary": False}}
 
 def save_config(cfg):
     with open(CONFIG_FILE, "w") as f:
@@ -619,6 +619,20 @@ def apply_theme(theme):
     config["theme"] = theme
     save_config(config)
 
+def find_python_interpreters():
+    possible_names = ["python", "python3", "python3.10", "python3.9", "python3.8"]
+    interpreters = []
+    for name in possible_names:
+        path = shutil.which(name)
+        if path and path not in interpreters:
+            interpreters.append(path)
+    # Add previously saved custom interpreters from config
+    extra = config.get("custom_interpreters", [])
+    for item in extra:
+        if item not in interpreters:
+            interpreters.append(item)
+    return interpreters if interpreters else [sys.executable]
+
 def open_about_dialog():
     root.attributes('-disabled', True)
     dialog = tb.Toplevel(root)
@@ -634,6 +648,48 @@ def open_about_dialog():
     tb.Label(dialog, text="Sajilo Python Playground", font=("Helvetica", 16, "bold")).pack(pady=10)
     tb.Label(dialog, text="Made with ❤️ at Beyond Apogee").pack()
     tb.Button(dialog, text="Close", command=lambda: (root.attributes('-disabled', False), dialog.destroy()), bootstyle=SECONDARY).pack(pady=15)
+    dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
+
+def open_interpreter_settings():
+    root.attributes('-disabled', True)
+    dialog = tb.Toplevel(root)
+    dialog.title("Python Interpreter Settings")
+    dialog.grab_set()
+    dialog.transient(root)
+    dialog.update_idletasks()
+    x = root.winfo_x() + (root.winfo_width() // 2) - (400 // 2)
+    y = root.winfo_y() + (root.winfo_height() // 2) - (300 // 2)
+    dialog.geometry(f"400x300+{x}+{y}")
+
+    interpreters = find_python_interpreters()
+    interpreter_var = tk.StringVar(value=config.get("default_interpreter", sys.executable))
+
+    tb.Label(dialog, text="Select Python Interpreter:").pack(pady=10)
+    dropdown = ttk.OptionMenu(dialog, interpreter_var, interpreter_var.get(), *interpreters)
+    dropdown.pack(pady=5)
+
+    def add_custom_interpreter():
+        path = filedialog.askopenfilename(title="Select Python Interpreter", filetypes=[("Python Executable", "python*")])
+        if path:
+            # Save the new interpreter to config under 'custom_interpreters'
+            custom = config.get("custom_interpreters", [])
+            if path not in custom:
+                custom.append(path)
+                config["custom_interpreters"] = custom
+                save_config(config)
+            dialog.destroy()  # Restart the dialog to refresh the list
+            open_interpreter_settings()
+
+    tb.Button(dialog, text="➕ Add Python Path", command=add_custom_interpreter, bootstyle=INFO).pack(pady=5)
+
+    def apply_change():
+        config["default_interpreter"] = interpreter_var.get()
+        save_config(config)
+        messagebox.showinfo("Interpreter Changed", f"Python interpreter set to:\n{config['default_interpreter']}")
+        root.attributes('-disabled', False)  # ENABLE FIRST
+        dialog.destroy()  # THEN DESTROY THE DIALOG
+
+    tb.Button(dialog, text="Apply", command=apply_change, bootstyle=SUCCESS).pack(pady=10)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (root.attributes('-disabled', False), dialog.destroy()))
 
 # --- Run Button ---
@@ -654,7 +710,8 @@ def run_code():
         path = f.name
 
     kill_requested = False
-    proc = subprocess.Popen([sys.executable, path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    interpreter = config.get("default_interpreter", sys.executable)
+    proc = subprocess.Popen([interpreter, path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     previous_process = proc
 
     def stream():
@@ -730,6 +787,7 @@ settings_menu.add_command(label="🎨 Theme", command=open_theme_settings)
 settings_menu.add_command(label="🧲 Physics", command=open_physics_settings)
 settings_menu.add_command(label="📚 Libraries", command=open_library_manager)
 settings_menu.add_command(label="🎞️ Media", command=open_media_manager)
+settings_menu.add_command(label="🐍 Interpreter", command=open_interpreter_settings)  # ✅ Interpreter selector added here
 
 # --- Key Bindings ---
 root.bind("<Control-n>", lambda e: new_tab())
