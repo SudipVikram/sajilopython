@@ -1,3 +1,9 @@
+'''
+Author: Sudip Adhikari
+Version: 1.0
+About: This library handles SajiloCV features like hand tracking and pose estimation.
+'''
+
 """
 This is a library by Beyond Apogee, Nepal tailored
 for the school-level students that we educate in our
