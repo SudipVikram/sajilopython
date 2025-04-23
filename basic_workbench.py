@@ -227,6 +227,8 @@ def create_editor_tab(code="", filepath=None):
     text_frame.pack(side="right", fill="both", expand=True)
     editor = tk.Text(text_frame, wrap="none", font=("Consolas", 12), undo=True, tabs=(Font(font=("Consolas", 12)).measure('    '),))
     editor.pack(fill="both", expand=True, side="left")
+    editor.focus_set()
+    editor.mark_set("insert", "1.0")
     vscroll = tk.Scrollbar(text_frame, command=editor.yview)
     vscroll.pack(side="right", fill="y")
     editor.configure(yscrollcommand=lambda *args: (vscroll.set(*args), line_numbers.yview_moveto(args[0])))
