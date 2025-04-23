@@ -791,10 +791,10 @@ def paste_code():
     if not editor:
         return
     try:
-        editor.event_generate("<<Paste>>")
+        editor.insert(tk.INSERT, root.clipboard_get())  # Paste only what's in clipboard
         update_status("📌 Code Pasted")
     except Exception as e:
-        update_status(f"Error pasting: {e}")
+        update_status(f"Paste Error: {e}")
 
 def undo_code():
     tab = notebook.select()
@@ -1094,7 +1094,10 @@ def run_code():
 
     kill_requested = False
     interpreter = config.get("default_interpreter", sys.executable)
-    proc = subprocess.Popen([interpreter, path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+
+    CREATE_NO_WINDOW = 0x08000000
+    proc = subprocess.Popen([interpreter, path], creationflags=CREATE_NO_WINDOW, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     previous_process = proc
 
     def stream():
@@ -1159,6 +1162,7 @@ def confirm_on_exit():
         x = root.winfo_x() + (root.winfo_width() // 2) - (width // 2)
         y = root.winfo_y() + (root.winfo_height() // 2) - (height // 2)
         confirm_dialog.geometry(f"{width}x{height}+{x}+{y}")
+        set_dialog_icon(confirm_dialog)
 
         tb.Label(confirm_dialog, text="You have unsaved tabs.\nDo you want to save them before exiting?", wraplength=280).pack(pady=20)
 
@@ -1212,7 +1216,7 @@ root.bind("<F5>", lambda e: run_code())
 root.protocol("WM_DELETE_WINDOW", lambda: (save_session(), root.destroy()))
 
 root.bind("<Control-c>", lambda e: copy_code())
-root.bind("<Control-v>", lambda e: paste_code())
+#root.bind("<Control-v>", lambda e: paste_code())
 root.bind("<Control-z>", lambda e: undo_code())
 root.bind("<Control-y>", lambda e: redo_code())
 
