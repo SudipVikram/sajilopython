@@ -1145,6 +1145,11 @@ def run_code():
     if not editor:
         return
     code = editor.get("1.0", "end")
+
+    # ✅ Auto-append Runner logic if 'sajilopython' is detected
+    if "import sajilopython" in code or "from sajilopython" in code:
+        code += "\n\nfrom sajilopython.run import Runner\nRunner().start()\n"
+
     output.config(state="normal")
     output.delete("1.0", "end")
     output.insert("end", "Running your code...\n")
