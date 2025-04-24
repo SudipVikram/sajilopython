@@ -475,6 +475,7 @@ config = load_config()
 # --- Main Window ---
 root = tb.Window(themename=config.get("theme", "flatly"))
 root.title("Sajilo Python Playground")
+icon_img = tk.PhotoImage(file="sajilopythonplayground.png")
 center_window(root, width=900, height=700)  # Adjust width and height if needed
 root.geometry("1000x810")
 try:
