@@ -334,12 +334,24 @@ def start():
                 pygame.quit()
                 sys.exit()
 
-        screen.fill((0, 0, 0))
+        # Proper background handling
+        if isinstance(background_current, pygame.Surface):
+            temp_bg = background_current.copy()
+            temp_bg.set_alpha(background_alpha)
+            screen.blit(temp_bg, (0, 0))
+        elif isinstance(background_current, tuple):
+            screen.fill(background_current)
+        else:
+            screen.fill((0, 0, 0))
+
+        # Character updates and drawing
         for char in characters:
             char.update()
             char.load()
 
         pygame.display.update()
+
+        # Handle keys after drawing
         for char in characters:
             char.handle_keys()
 
