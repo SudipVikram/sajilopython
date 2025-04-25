@@ -1,8 +1,14 @@
-from sajilopython import cat, dog, start, delay
+from sajilopython import cat, dog, start, delay, shark, sun, spaceship, background, green
 
+
+background.color('lightgreen')
 # Load both animals
 cat.load()
 dog.load()
+shark.goto(200,300)
+shark.load()
+sun.load()
+spaceship.load()
 
 # Assign control keys
 cat.keys()              # Arrow keys for cat
@@ -18,6 +24,7 @@ dog.loop_down()
 
 # Move cat to a random position at the start
 cat.goto_random()
+background.load('green')
 
 # Dog performs a dance before the game starts
 dog.dance(speed=80)
@@ -27,4 +34,5 @@ delay(1000)
 
 # Start the game loop
 start()
+
 

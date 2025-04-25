@@ -13,8 +13,9 @@ characters = []
 
 
 class Animal:
-    def __init__(self, color, org=(100, 100), width=60, height=60):
-        self.color = color
+    def __init__(self, name, org=(100, 100), width=64, height=64):
+        self.name = name
+        self.color = (255, 255, 255)  # Color kept for compatibility but not used for drawing
         self.x, self.y = org
         self.width = width
         self.height = height
@@ -24,6 +25,7 @@ class Animal:
         self.jump_height = 50
         self.jump_direction = -1  # -1 for up, 1 for down
         self.jump_progress = 0
+        self.image = pygame.image.load(f"libraries/sajilopython/assets/characters/{self.name}.png").convert_alpha()
 
     def center(self):
         self.x = WIDTH // 2 - self.width // 2
@@ -70,7 +72,7 @@ class Animal:
     def load(self):
         if self not in characters:
             characters.append(self)
-        pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
+        screen.blit(self.image, (self.x, self.y))
         if self.text:
             font = pygame.font.SysFont("comicsansms", 20)
             label = font.render(self.text, True, (255, 255, 255))
@@ -101,7 +103,14 @@ class Animal:
         self.width, self.height = original_width, original_height
 
     def _refresh(self):
-        screen.fill((0, 0, 0))
+        if isinstance(background_current, pygame.Surface):
+            temp_bg = background_current.copy()
+            temp_bg.set_alpha(background_alpha)
+            screen.blit(temp_bg, (0, 0))
+        elif isinstance(background_current, tuple):
+            screen.fill(background_current)
+        else:
+            screen.fill((0, 0, 0))
         for char in characters:
             char.load()
         pygame.display.update()
@@ -265,13 +274,56 @@ class Animal:
                     self.jump_direction = -1  # Reset for next jump
 
 
-# Predefined animals
-cat = Animal(color=(255, 100, 100))
-dog = Animal(color=(100, 100, 255))
+import os
+
+# Auto-detect and create Animal objects based on 64x64 images in the characters folder
+character_folder = "libraries/sajilopython/assets/characters/"
+for filename in os.listdir(character_folder):
+    if filename.endswith(".png") or filename.endswith(".gif"):
+        name = os.path.splitext(filename)[0]  # remove .png or .gif
+        image_path = os.path.join(character_folder, filename)
+        image = pygame.image.load(image_path)
+        if image.get_width() == 64 and image.get_height() == 64:
+            globals()[name] = Animal(name=name)
 
 
 def delay(ms):
     pygame.time.delay(ms)
+
+
+import os
+
+# Background handling
+background_images = {}
+background_current = None
+background_alpha = 255
+
+# Load backgrounds from the backgrounds folder
+background_folder = "libraries/sajilopython/assets/backgrounds/"
+for filename in os.listdir(background_folder):
+    if filename.endswith(".png") or filename.endswith(".gif") or filename.endswith(".jpg"):
+        name = os.path.splitext(filename)[0]
+        image = pygame.image.load(os.path.join(background_folder, filename)).convert()
+        background_images[name] = image
+
+
+class Background:
+    def load(self, name):
+        global background_current
+        if name in background_images:
+            background_current = background_images[name]
+
+    def opacity(self, alpha):
+        global background_alpha
+        background_alpha = max(0, min(255, alpha))
+
+    def color(self, colorname):
+        global background_current
+        color_dict = pygame.color.THECOLORS
+        background_current = color_dict.get(colorname.lower(), (0, 0, 0))
+
+
+background = Background()
 
 
 # Start function to manually begin the game loop
