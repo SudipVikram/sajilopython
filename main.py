@@ -1,38 +1,28 @@
-from sajilopython import cat, dog, start, delay, shark, sun, spaceship, background, green
+from sajilopython import background, cat, start, Shape
 
+# Set a background color or image
+background.color('black')
+background.load('green')       # If you have 'green.jpg' in your backgrounds folder
 
-background.color('lightgreen')
-# Load both animals
+# Load the cat character and give it arrow key controls
 cat.load()
-dog.load()
-shark.goto(200,300)
-shark.load()
-sun.load()
-spaceship.load()
+cat.keys()
+cat.say("I'm the Cat!")
 
-# Assign control keys
-cat.keys()              # Arrow keys for cat
-dog.wasd()              # WASD keys for dog
+# Create a rectangle shape behaving like a character
+myrect = Shape('circle')
+myrect.load()
+myrect.keep_moving_right()
+myrect.bound()                  # Keeps the rectangle inside the screen boundary
+myrect.jump()
+myrect.say("hello there")
 
-# Looping: the cat will loop right, dog will loop down
-cat.loop_right()
-dog.loop_down()
-
-# Uncomment these lines if you also want to test bounding:
-# cat.bound()
-# dog.bound()
-
-# Move cat to a random position at the start
-cat.goto_random()
-background.load('green')
-
-# Dog performs a dance before the game starts
-dog.dance(speed=80)
-
-# Delay to see the dance before entering the loop
-delay(1000)
+# Create a circle shape behaving like a character
+mycircle = Shape('circle', position=(500, 400), size=(80, 80), color='blue')
+mycircle.load()
+mycircle.jump(150)              # The circle jumps once at the start
+mycircle.loop_left()           # Circle keeps looping left
 
 # Start the game loop
 start()
-
 

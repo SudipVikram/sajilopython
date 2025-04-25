@@ -12,8 +12,8 @@ clock = pygame.time.Clock()
 characters = []
 
 
-class Animal:
-    def __init__(self, name, org=(100, 100), width=64, height=64):
+class Character:
+    def __init__(self, name, org=(100, 100), width=64, height=64, use_image=True):
         self.name = name
         self.color = (255, 255, 255)  # Color kept for compatibility but not used for drawing
         self.x, self.y = org
@@ -25,7 +25,11 @@ class Animal:
         self.jump_height = 50
         self.jump_direction = -1  # -1 for up, 1 for down
         self.jump_progress = 0
-        self.image = pygame.image.load(f"libraries/sajilopython/assets/characters/{self.name}.png").convert_alpha()
+        image_path = f"libraries/sajilopython/assets/characters/{self.name}.png"
+        if os.path.exists(image_path):
+            self.image = pygame.image.load(image_path).convert_alpha()
+        else:
+            self.image = None
 
     def center(self):
         self.x = WIDTH // 2 - self.width // 2
@@ -284,7 +288,7 @@ for filename in os.listdir(character_folder):
         image_path = os.path.join(character_folder, filename)
         image = pygame.image.load(image_path)
         if image.get_width() == 64 and image.get_height() == 64:
-            globals()[name] = Animal(name=name)
+            globals()[name] = Character(name=name)
 
 
 def delay(ms):
@@ -324,6 +328,122 @@ class Background:
 
 
 background = Background()
+
+import pygame.mixer
+
+# Sound handling
+pygame.mixer.init()
+sound_files = {}
+sound_channel = pygame.mixer.Channel(0)
+current_sound = None
+
+# Load sounds from the sounds folder
+sound_folder = "libraries/sajilopython/assets/sounds/"
+for filename in os.listdir(sound_folder):
+    if filename.endswith(".wav") or filename.endswith(".mp3"):
+        name = os.path.splitext(filename)[0]
+        sound_files[name] = pygame.mixer.Sound(os.path.join(sound_folder, filename))
+
+
+class Sound:
+    def load(self, name):
+        global current_sound
+        if name in sound_files:
+            current_sound = sound_files[name]
+            sound_channel.play(current_sound)
+
+    def loop(self, name):
+        global current_sound
+        if name in sound_files:
+            current_sound = sound_files[name]
+            sound_channel.play(current_sound, loops=-1)
+
+    def volume(self, level):
+        volume = max(0.0, min(1.0, level / 10))
+        sound_channel.set_volume(volume)
+
+    def stop(self):
+        sound_channel.stop()
+
+
+sound = Sound()
+
+
+# Drawing shapes and grid
+class Shape(Character):
+    def __init__(self, shape_type, position=(100, 100), size=(64, 64), color='white'):
+        super().__init__(name=shape_type)
+        self.shape_type = shape_type
+        self.position = position
+        self.size = size
+        self.color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        super().__init__(name=shape_type, use_image=False)
+        self.shape_type = shape_type
+        self.position = position
+        self.size = size
+        self.color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        self.image = None
+
+    def load(self):
+        if self not in characters:
+            characters.append(self)
+        if self.shape_type == 'rectangle':
+            pygame.draw.rect(screen, self.color, (self.x, self.y, *self.size))
+        elif self.shape_type == 'circle':
+            pygame.draw.circle(screen, self.color, (self.x + self.size[0] // 2, self.y + self.size[1] // 2),
+                               self.size[0] // 2)
+        if self.text:
+            font = pygame.font.SysFont("comicsansms", 20)
+            label = font.render(self.text, True, (255, 255, 255))
+            screen.blit(label, (self.x, self.y - 30))
+
+
+class Draw:
+    def line(self, start, end, color='white', width=2):
+        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        pygame.draw.line(screen, color, start, end, width)
+
+    def rectangle(self, rect, color='white', width=2, fill=False):
+        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        if fill:
+            pygame.draw.rect(screen, color, rect)
+        else:
+            pygame.draw.rect(screen, color, rect, width)
+        pygame.draw.rect(screen, color, rect, width)
+
+    def circle(self, center, radius, color='white', width=2, fill=False):
+        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        if fill:
+            pygame.draw.circle(screen, color, center, radius)
+        else:
+            pygame.draw.circle(screen, color, center, radius, width)
+        pygame.draw.circle(screen, color, center, radius, width)
+
+    def ellipse(self, rect, color='white', width=2):
+        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        pygame.draw.ellipse(screen, color, rect, width)
+
+    def arc(self, rect, start_angle, end_angle, color='white', width=2):
+        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        pygame.draw.arc(screen, color, rect, start_angle, end_angle, width)
+
+    def polygon(self, points, color='white', width=2):
+        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        pygame.draw.polygon(screen, color, points, width)
+
+    def grid(self, spacing=50, color=(0, 255, 0)):
+        font = pygame.font.SysFont("comicsansms", 12)
+        for x in range(0, WIDTH, spacing):
+            pygame.draw.line(screen, color, (x, 0), (x, HEIGHT))
+            label = font.render(str(x), True, color)
+            screen.blit(label, (x + 2, 2))
+        for y in range(0, HEIGHT, spacing):
+            pygame.draw.line(screen, color, (0, y), (WIDTH, y))
+            label = font.render(str(y), True, color)
+            screen.blit(label, (2, y + 2))
+
+
+draw = Draw()
 
 
 # Start function to manually begin the game loop
