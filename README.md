@@ -1,6 +1,23 @@
 # SajiloPython
 
-**SajiloPython** is a beginner-friendly Python library designed by Beyond Apogee from Nepal for kids and early learners to create interactive games, animations, and creative projects with ease. Built on top of Pygame, SajiloPython provides simple commands for controlling characters, playing sounds, loading backgrounds, drawing shapes, and more — all in a fun, engaging way.
+**SajiloPython** is a beginner-friendly Python library designed for kids and early learners to create interactive games, animations, and creative projects with ease. Built on top of Pygame, SajiloPython provides simple commands for controlling characters, playing sounds, loading backgrounds, drawing shapes, and more — all in a fun, engaging way.
+
+---
+
+## 🖥️ Sajilo Python Playground IDE
+
+We also provide the **Sajilo Python Playground IDE**, designed specifically to help students easily load and run:
+- **SajiloPython**
+- **SajiloPyGame**
+- **SajiloCV**
+
+This lightweight IDE works even on older, low-spec hardware, making coding accessible to everyone. It supports theme selection, syntax highlighting, and allows quick code execution without heavy system requirements.
+
+### 🖼️ Screenshot of Sajilo Python Playground IDE:
+
+![Sajilo Python Playground IDE](./sajilopythonplaygroundIDE.png)
+
+---
 
 ## 🚀 Features
 
@@ -18,21 +35,7 @@
   - Backgrounds: `assets/backgrounds/`
   - Sounds: `assets/sounds/`
 
-## 📂 Folder Structure
-
-```
-SajiloPython/
-├── libraries/
-│   └── sajilopython/
-│       ├── __init__.py
-│       └── assets/
-│           ├── characters/     # .png or .gif files (64x64)
-│           ├── backgrounds/    # .png, .gif, or .jpg files
-│           └── sounds/         # .wav or .mp3 files
-├── examples/
-│   └── test_script.py          # Example usage script
-└── README.md
-```
+---
 
 ## 🐍 Example Usage
 
@@ -50,6 +53,8 @@ draw.grid()
 sound.loop('background_music')
 start()
 ```
+
+---
 
 ## 📝 License
 
