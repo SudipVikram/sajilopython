@@ -5,11 +5,12 @@ import sys
 pygame.init()
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("SajiloPython")
+pygame.display.set_caption("Sajilo Python Playground")
 clock = pygame.time.Clock()
 
 # Global content list to draw
 characters = []
+drawshapes = []  # Global list to store shape drawing commands
 
 
 class Character:
@@ -400,47 +401,59 @@ class Shape(Character):
 
 class Draw:
     def line(self, start, end, color='white', width=2):
-        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
-        pygame.draw.line(screen, color, start, end, width)
+        # color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        # pygame.draw.line(screen, color, start, end, width)
+        drawshapes.append(('line', (start, end, color, width)))
 
     def rectangle(self, rect, color='white', width=2, fill=False):
-        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        # color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
         if fill:
-            pygame.draw.rect(screen, color, rect)
+            # pygame.draw.rect(screen, color, rect)
+            drawshapes.append(('rectangle', (rect, color, width, fill)))
         else:
-            pygame.draw.rect(screen, color, rect, width)
-        pygame.draw.rect(screen, color, rect, width)
+            # pygame.draw.rect(screen, color, rect, width)
+            drawshapes.append(('rectangle', (rect, color, width, fill)))
+        # pygame.draw.rect(screen, color, rect, width)
+        drawshapes.append(('rectangle', (rect, color, width, fill)))
 
     def circle(self, center, radius, color='white', width=2, fill=False):
-        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        # color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
         if fill:
-            pygame.draw.circle(screen, color, center, radius)
+            # pygame.draw.circle(screen, color, center, radius)
+            drawshapes.append(('circle', (center, radius, color, width, fill)))
         else:
-            pygame.draw.circle(screen, color, center, radius, width)
-        pygame.draw.circle(screen, color, center, radius, width)
+            # pygame.draw.circle(screen, color, center, radius, width)
+            drawshapes.append(('circle', (center, radius, color, width, fill)))
+        # pygame.draw.circle(screen, color, center, radius, width)
+        drawshapes.append(('circle', (center, radius, color, width, fill)))
 
     def ellipse(self, rect, color='white', width=2):
-        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
-        pygame.draw.ellipse(screen, color, rect, width)
+        # color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        # pygame.draw.ellipse(screen, color, rect, width)
+        drawshapes.append(('ellipse', (rect, color, width)))
 
     def arc(self, rect, start_angle, end_angle, color='white', width=2):
-        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
-        pygame.draw.arc(screen, color, rect, start_angle, end_angle, width)
+        # color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        # pygame.draw.arc(screen, color, rect, start_angle, end_angle, width)
+        drawshapes.append(('arc', (rect, start_angle, end_angle, color, width)))
 
     def polygon(self, points, color='white', width=2):
-        color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
-        pygame.draw.polygon(screen, color, points, width)
+        # color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+        # pygame.draw.polygon(screen, color, points, width)
+        drawshapes.append(('polygon', (points, color, width)))
 
-    def grid(self, spacing=50, color=(0, 255, 0)):
-        font = pygame.font.SysFont("comicsansms", 12)
+    def grid(self, spacing=50, color='green'):
+        # font = pygame.font.SysFont("comicsansms", 12)
         for x in range(0, WIDTH, spacing):
-            pygame.draw.line(screen, color, (x, 0), (x, HEIGHT))
-            label = font.render(str(x), True, color)
-            screen.blit(label, (x + 2, 2))
+            # pygame.draw.line(screen, color, (x, 0), (x, HEIGHT))
+            drawshapes.append(('grid', (spacing, color)))
+            # label = font.render(str(x), True, color)
+            # screen.blit(label, (x + 2, 2))
         for y in range(0, HEIGHT, spacing):
-            pygame.draw.line(screen, color, (0, y), (WIDTH, y))
-            label = font.render(str(y), True, color)
-            screen.blit(label, (2, y + 2))
+            # pygame.draw.line(screen, color, (0, y), (WIDTH, y))
+            drawshapes.append(('grid', (spacing, color)))
+            # label = font.render(str(y), True, color)
+            # screen.blit(label, (2, y + 2))
 
 
 draw = Draw()
@@ -468,6 +481,55 @@ def start():
         for char in characters:
             char.update()
             char.load()
+
+        # global drawshapes
+        # print(drawshapes)
+        # Process drawshapes list
+        for shape in drawshapes:
+            command, args = shape
+            if command == 'line':
+                start_pos, end_pos, color, width = args
+                color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+                pygame.draw.line(screen, color, start_pos, end_pos, width)
+            elif command == 'rectangle':
+                rect, color, width, fill = args
+                color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+                if fill:
+                    pygame.draw.rect(screen, color, rect)
+                else:
+                    pygame.draw.rect(screen, color, rect, width)
+            elif command == 'circle':
+                center, radius, color, width, fill = args
+                color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+                if fill:
+                    pygame.draw.circle(screen, color, center, radius)
+                else:
+                    pygame.draw.circle(screen, color, center, radius, width)
+            elif command == 'ellipse':
+                rect, color, width = args
+                color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+                pygame.draw.ellipse(screen, color, rect, width)
+            elif command == 'arc':
+                rect, start_angle, end_angle, color, width = args
+                color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+                pygame.draw.arc(screen, color, rect, start_angle, end_angle, width)
+            elif command == 'polygon':
+                points, color, width = args
+                color = pygame.color.THECOLORS.get(color.lower(), (255, 255, 255))
+                pygame.draw.polygon(screen, color, points, width)
+            elif command == 'grid':
+                spacing, color = args
+                color = pygame.color.THECOLORS.get(color.lower(), (0, 255, 0))
+                font = pygame.font.SysFont("comicsansms", 12)
+                for x in range(0, WIDTH, spacing):
+                    pygame.draw.line(screen, color, (x, 0), (x, HEIGHT))
+                    label = font.render(str(x), True, color)
+                    screen.blit(label, (x + 2, 2))
+                for y in range(0, HEIGHT, spacing):
+                    pygame.draw.line(screen, color, (0, y), (WIDTH, y))
+                    label = font.render(str(y), True, color)
+                    screen.blit(label, (2, y + 2))
+                pygame.display.update()
 
         pygame.display.update()
 
