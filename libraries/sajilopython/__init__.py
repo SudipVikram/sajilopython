@@ -288,7 +288,7 @@ for filename in os.listdir(character_folder):
         name = os.path.splitext(filename)[0]  # remove .png or .gif
         image_path = os.path.join(character_folder, filename)
         image = pygame.image.load(image_path)
-        if image.get_width() == 64 and image.get_height() == 64:
+        if image.get_width() == 64 or image.get_width() == 32 and image.get_height() == 64 or image.get_height() == 32:
             globals()[name] = Character(name=name)
 
 
