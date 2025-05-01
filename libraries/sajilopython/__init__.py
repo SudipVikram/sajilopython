@@ -477,6 +477,28 @@ def start():
         else:
             screen.fill((0, 0, 0))
 
+        # Draw maze and scoreboard each frame
+        '''from .mazes import get_current_maze, is_render_enabled
+        maze = get_current_maze()
+        if maze and is_render_enabled():
+            maze.draw_maze()
+            #maze.render_scoreboard()'''
+        from .mazes import maze
+        if maze.is_render_enabled():
+            print(maze.command_queue)
+            maze.execute_next_command()
+            maze.draw_maze()
+            maze.render_scoreboard()
+            pygame.display.update()
+            clock.tick(30)  # slow down to ~30 FPS so movement is visible
+        '''from .mazes import get_current_maze
+        maze = get_current_maze()
+        if maze and maze.is_render_enabled():
+            maze.execute_next_command()
+            maze.draw_maze()
+            pygame.display.update()
+            clock.tick(10) # slow down to ~10 FPS so movement is visible'''
+
         # Character updates and drawing
         for char in characters:
             char.update()
