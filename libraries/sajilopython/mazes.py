@@ -205,6 +205,21 @@ class MazeGame:
         self.target_x = self.character_x
         self.target_y = self.character_y
 
+    class Player:
+        def __init__(self,parent):
+            self.parent = parent
+            self.command = None
+
+        def move_forward(self,arg=None):
+            self.command = "move_forward"
+            self.parent.command_queue.append((self.command, arg))
+        def turn_left(self,arg=None):
+            self.command = "turn_left"
+            self.parent.command_queue.append((self.command, arg))
+        def turn_right(self,arg=None):
+            self.command = "turn_right"
+            self.parent.command_queue.append((self.command, arg))
+
     def command(self, command, arg=None):
         self.command_queue.append((command, arg))
 
@@ -401,6 +416,7 @@ class MazeGame:
 
 
 maze = MazeGame(maze1)
+player = maze.Player(maze)
 
 def get_current_maze():
     global current_maze
