@@ -225,6 +225,8 @@ class MazeGame:
         self.load_scores()
         # the player's name
         self.current_player = None
+        self.move_sound = pygame.mixer.Sound(os.path.join(assets_folder, "sounds/boing.mp3"))
+        self.turn_sound = pygame.mixer.Sound(os.path.join(assets_folder, "sounds/newlevel.mp3"))
 
     class Player:
         def __init__(self,parent):
@@ -379,14 +381,17 @@ class MazeGame:
                     self.check_collectibles(next_x, next_y)
                     self.check_goal(next_x, next_y)
                     print(f"Moving Forward to ({next_x}, {next_y}), cell={self.maze_map[next_y][next_x]}")
+                    self.move_sound.play()  # ✅ play boing sound
 
     def turn_left(self):
         self.character_direction = (self.character_direction - 1) % 4
         print("Turning Left")
+        self.turn_sound.play()  # ✅ play drop sound
 
     def turn_right(self):
         self.character_direction = (self.character_direction + 1) % 4
         print("Turning Right")
+        self.turn_sound.play()  # ✅ play drop sound
 
     def check_collectibles(self, player_x, player_y):
         collected = None

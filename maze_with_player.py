@@ -2,7 +2,7 @@ from sajilopython import start
 from sajilopython.mazes import maze, player
 
 maze.load()
-maze.player_name("Vikram")
+maze.player_name("Vikramaditya")
 
 # Queue commands
 player.move_forward(2)
