@@ -192,8 +192,15 @@ class MazeGame:
         self.character_y = 0
         self.character_direction = 1   # right, e.g., 0=up,1=right,2=down,3=left
         self.visited_tiles = set()
-        base_path = os.path.join(assets_folder, "characters")
-        self.char_img = pygame.image.load(os.path.join(base_path, "char.png")).convert_alpha()
+        #base_path = os.path.join(assets_folder, "characters")
+        #self.char_img = pygame.image.load(os.path.join(base_path, "char.png")).convert_alpha()
+        self.base_path = os.path.join(assets_folder, "characters")
+        self.character_images = {
+            0: pygame.image.load(os.path.join(self.base_path, "maze_player_up.png")).convert_alpha(),
+            1: pygame.image.load(os.path.join(self.base_path, "maze_player_right.png")).convert_alpha(),
+            2: pygame.image.load(os.path.join(self.base_path, "maze_player_down.png")).convert_alpha(),
+            3: pygame.image.load(os.path.join(self.base_path, "maze_player_left.png")).convert_alpha(),
+        }
         self.find_positions()
         self.character_x, self.character_y = self.start_pos
         self.visited_tiles.add(self.start_pos)
@@ -300,8 +307,11 @@ class MazeGame:
             center_y = y * TILE_SIZE + TILE_SIZE // 2
             pygame.draw.circle(self.screen, (200, 200, 200), (center_x, center_y), 4)
         # Draw character
+        '''char_px, char_py = self.character_x * TILE_SIZE, self.character_y * TILE_SIZE
+        self.screen.blit(self.char_img, (char_px, char_py))'''
         char_px, char_py = self.character_x * TILE_SIZE, self.character_y * TILE_SIZE
-        self.screen.blit(self.char_img, (char_px, char_py))
+        char_img = self.character_images[self.character_direction]
+        self.screen.blit(char_img, (char_px, char_py))
 
     def move_forward(self, steps=1):
         for _ in range(steps):

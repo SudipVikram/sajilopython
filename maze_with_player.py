@@ -1,0 +1,29 @@
+from sajilopython import start
+from sajilopython.mazes import maze, player
+
+maze.load()
+
+# Queue commands
+player.move_forward(2)
+player.turn_right()
+player.move_forward(2)
+player.turn_left()
+player.move_forward(7)
+player.turn_right()
+player.move_forward(2)
+player.turn_right()
+player.move_forward(1)
+player.turn_left()
+player.move_forward(2)
+player.turn_left()
+player.move_forward(1)
+
+#level 1 completed, now starting with level 2
+player.move_forward(4)
+player.turn_left()
+player.turn_left()
+player.move_forward(2)
+player.turn_left()
+player.move_forward(2)
+
+start()
