@@ -211,6 +211,16 @@ class MazeGame:
         self.animation_speed = 5 # pixels per frame for smooth movement
         self.target_x = self.character_x
         self.target_y = self.character_y
+        self.icon_star = pygame.transform.scale(pygame.image.load(os.path.join(assets_folder, "tiles/star.png")),
+                                                (20, 20))
+        self.icon_coin = pygame.transform.scale(pygame.image.load(os.path.join(assets_folder, "tiles/coin.png")),
+                                                (20, 20))
+        self.icon_cherry = pygame.transform.scale(pygame.image.load(os.path.join(assets_folder, "tiles/cherry.png")),
+                                                  (20, 20))
+        self.icon_score = pygame.transform.scale(pygame.image.load(os.path.join(assets_folder, "tiles/score.png")),
+                                                 (20, 20))
+        self.icon_level = pygame.transform.scale(pygame.image.load(os.path.join(assets_folder, "tiles/level.png")),
+                                                 (20, 20))
 
     class Player:
         def __init__(self,parent):
@@ -330,14 +340,15 @@ class MazeGame:
                     self.visited_tiles.add((next_x, next_y))
                     self.check_collectibles(next_x, next_y)
                     self.check_goal(next_x, next_y)
-                    print("moving forward")
-                    print(f"Trying to move to ({next_x}, {next_y}), cell={self.maze_map[next_y][next_x]}")
+                    print(f"Moving to ({next_x}, {next_y}), cell={self.maze_map[next_y][next_x]}")
 
     def turn_left(self):
         self.character_direction = (self.character_direction - 1) % 4
+        print("Turning Left")
 
     def turn_right(self):
         self.character_direction = (self.character_direction + 1) % 4
+        print("Turning Right")
 
     def check_collectibles(self, player_x, player_y):
         collected = None
@@ -404,25 +415,36 @@ class MazeGame:
         return self.won
 
     def render_scoreboard(self):
-        # Draw scoreboard background
-        pygame.draw.rect(self.screen, (30, 30, 30), (10, 10, 250, 100))  # background box
+        pygame.draw.rect(self.screen, (30, 30, 30), (5, 5, 70, 150))  # larger box
 
-        # Draw score bar
+        font = pygame.font.SysFont("Arial", 20)
+        y_start = 20
+
+        # Total score icon and count
+        self.screen.blit(self.icon_score, (10, y_start))
         total = total_score + self.level_score
-        pygame.draw.rect(self.screen, (255, 215, 0), (20, 20, min(total, 200), 10))  # gold score bar
+        total_text = font.render(str(total), True, (255, 255, 255))
+        self.screen.blit(total_text, (40, y_start))
 
-        # Draw level box
-        pygame.draw.rect(self.screen, (0, 128, 255), (20, 40, 20, 20))  # blue level box
-        for _ in range(current_level_index + 1):
-            pygame.draw.circle(self.screen, (0, 255, 0), (50 + _ * 15, 50), 7)  # green dots for levels
+        # Level icon and count
+        self.screen.blit(self.icon_level, (10, y_start + 25))
+        level_text = font.render(str(current_level_index + 1), True, (255, 255, 255))
+        self.screen.blit(level_text, (40, y_start + 25))
 
-        # Draw collectible indicators
-        for i in range(self.stars_collected):
-            pygame.draw.circle(self.screen, (255, 255, 0), (20 + i * 15, 80), 5)  # yellow stars
-        for i in range(self.coins_collected):
-            pygame.draw.circle(self.screen, (255, 165, 0), (20 + i * 15, 95), 5)  # orange coins
-        for i in range(self.cherries_collected):
-            pygame.draw.circle(self.screen, (255, 0, 0), (20 + i * 15, 110), 5)  # red cherries
+        # Collectible indicators with icons and counts
+        y_start = 70
+        self.screen.blit(self.icon_star, (10, y_start))
+        self.screen.blit(self.icon_coin, (10, y_start + 25))
+        self.screen.blit(self.icon_cherry, (10, y_start + 50))
+
+        font = pygame.font.SysFont("Arial", 20)
+        star_text = font.render(str(self.stars_collected), True, (255, 255, 255))
+        coin_text = font.render(str(self.coins_collected), True, (255, 255, 255))
+        cherry_text = font.render(str(self.cherries_collected), True, (255, 255, 255))
+
+        self.screen.blit(star_text, (40, y_start))
+        self.screen.blit(coin_text, (40, y_start + 25))
+        self.screen.blit(cherry_text, (40, y_start + 50))
 
 
 maze = MazeGame(maze1)

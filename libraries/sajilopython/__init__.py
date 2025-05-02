@@ -485,7 +485,6 @@ def start():
             #maze.render_scoreboard()'''
         from .mazes import maze
         if maze.is_render_enabled():
-            print(maze.command_queue)
             maze.execute_next_command()
             maze.draw_maze()
             maze.render_scoreboard()
