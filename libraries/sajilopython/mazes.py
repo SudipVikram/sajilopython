@@ -439,15 +439,17 @@ class MazeGame:
         # Collectible icons and counts
         x_start = screen_width // 2 - 60
         y = self.screen.get_height() - 50
+        self.screen.blit(self.icon_level, (x_start-50, y))
         self.screen.blit(self.icon_star, (x_start, y))
         self.screen.blit(self.icon_coin, (x_start + 50, y))
         self.screen.blit(self.icon_cherry, (x_start + 100, y))
 
-
+        level_count = font.render(str(len(self.scores.get('levels_completed', []))), True, (255, 255, 255))
         star_count = font.render(str(self.scores['collectibles']['stars']), True, (255, 255, 255))
         coin_count = font.render(str(self.scores['collectibles']['coins']), True, (255, 255, 255))
         cherry_count = font.render(str(self.scores['collectibles']['cherries']), True, (255, 255, 255))
 
+        self.screen.blit(level_count, (x_start-25, y))
         self.screen.blit(star_count, (x_start + 25, y))
         self.screen.blit(coin_count, (x_start + 75, y))
         self.screen.blit(cherry_count, (x_start + 125, y))
