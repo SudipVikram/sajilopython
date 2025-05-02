@@ -256,12 +256,9 @@ class MazeGame:
                 self.move_forward(1)
                 if arg > 1:
                     self.command_queue.insert(0, ("move_forward", arg - 1))
-                print("move forward")
             elif command == "turn_left":
-                print("turn left")
                 self.turn_left()
             elif command == "turn_right":
-                print("turn right")
                 self.turn_right()
             self.command_timer = self.command_delay
 
@@ -340,7 +337,7 @@ class MazeGame:
                     self.visited_tiles.add((next_x, next_y))
                     self.check_collectibles(next_x, next_y)
                     self.check_goal(next_x, next_y)
-                    print(f"Moving to ({next_x}, {next_y}), cell={self.maze_map[next_y][next_x]}")
+                    print(f"Moving Forward to ({next_x}, {next_y}), cell={self.maze_map[next_y][next_x]}")
 
     def turn_left(self):
         self.character_direction = (self.character_direction - 1) % 4
@@ -407,6 +404,7 @@ class MazeGame:
         self.character_direction = 1  # right
         self.visited_tiles = set()
         self.visited_tiles.add(self.start_pos)
+        self.won = False
 
     def get_score(self):
         return self.level_score
@@ -415,7 +413,7 @@ class MazeGame:
         return self.won
 
     def render_scoreboard(self):
-        pygame.draw.rect(self.screen, (30, 30, 30), (5, 5, 70, 150))  # larger box
+        pygame.draw.rect(self.screen, (30, 30, 30), (5, 5, 80, 150))  # larger box
 
         font = pygame.font.SysFont("Arial", 20)
         y_start = 20
