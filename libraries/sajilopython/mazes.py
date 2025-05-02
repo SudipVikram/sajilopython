@@ -308,10 +308,10 @@ class MazeGame:
     # player name check
     def player_name(self, name):
         if name == self.scores["player_name"]:
-            print("⚠ This name already holds the highest score! Please choose a different name.")
+            print("This name already holds the highest score! Please choose a different name.")
             return
         if name.strip() == "":
-            print("⚠ Player name cannot be empty!")
+            print("Player name cannot be empty!")
             return
         self.current_player = name
 
@@ -503,7 +503,7 @@ class MazeGame:
         self.visited_tiles.add(self.start_pos)'''
         self.reset()
         self.load()
-        print(f"➡ Welcome to Level {current_level_index + 1}!")
+        print(f"Welcome to Level {current_level_index + 1}!")
 
     def reset(self):
         self.character_x, self.character_y = self.start_pos
@@ -575,4 +575,4 @@ def next_level():
         print("All levels completed! Final Score:", total_score)
         return
     current_maze = MazeGame(all_mazes[current_level_index], current_maze.screen)
-    print(f"➡ Welcome to Level {current_level_index + 1}!")
+    print(f"Welcome to Level {current_level_index + 1}!")
