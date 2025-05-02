@@ -28,3 +28,4 @@ maze.command("move_forward",2)
 
 
 start()
+

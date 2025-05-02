@@ -1,0 +1,14 @@
+{
+    "player_name": "Vikram",
+    "highest_total_score": 265,
+    "levels_completed": [
+        1,
+        2,
+        3
+    ],
+    "collectibles": {
+        "stars": 3,
+        "coins": 4,
+        "cherries": 4
+    }
+}
