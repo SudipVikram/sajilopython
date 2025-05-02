@@ -485,11 +485,15 @@ def start():
             #maze.render_scoreboard()'''
         from .mazes import maze
         if maze.is_render_enabled():
-            maze.execute_next_command()
-            maze.draw_maze()
-            maze.render_scoreboard()
-            pygame.display.update()
-            clock.tick(30)  # slow down to ~30 FPS so movement is visible
+            if maze.has_player_name():
+                maze.execute_next_command()
+                maze.draw_maze()
+                maze.render_scoreboard()
+                maze.draw_bottom_info()
+                pygame.display.update()
+                clock.tick(30)  # slow down to ~30 FPS so movement is visible
+            else:
+                maze.draw_error_message('WARNING! Please enter player name using maze.player_name("YourName")')
         '''from .mazes import get_current_maze
         maze = get_current_maze()
         if maze and maze.is_render_enabled():

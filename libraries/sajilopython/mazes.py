@@ -4,6 +4,7 @@
 import pygame
 import os
 from . import screen
+import json
 
 # Tile Definitions
 WALL = "1"
@@ -221,6 +222,9 @@ class MazeGame:
                                                  (20, 20))
         self.icon_level = pygame.transform.scale(pygame.image.load(os.path.join(assets_folder, "tiles/level.png")),
                                                  (20, 20))
+        self.load_scores()
+        # the player's name
+        self.current_player = None
 
     class Player:
         def __init__(self,parent):
@@ -261,6 +265,43 @@ class MazeGame:
             elif command == "turn_right":
                 self.turn_right()
             self.command_timer = self.command_delay
+
+    # for score updates
+    def load_scores(self):
+        try:
+            with open("maze_scores.json", "r") as f:
+                self.scores = json.load(f)
+        except FileNotFoundError:
+            self.scores = {
+                "player_name": "",
+                "highest_total_score": 0,
+                "levels_completed": [],
+                "collectibles": {"stars": 0, "coins": 0, "cherries": 0}
+            }
+
+    def save_scores(self):
+        with open("maze_scores.json", "w") as f:
+            json.dump(self.scores, f, indent=4)
+
+    # player name check
+    def player_name(self, name):
+        if name == self.scores["player_name"]:
+            print("⚠️ This name already holds the highest score! Please choose a different name.")
+            return
+        if name.strip() == "":
+            print("⚠️ Player name cannot be empty!")
+            return
+        self.current_player = name
+
+    def has_player_name(self):
+        return self.current_player is not None and str(self.current_player).strip() != ""
+
+    def draw_error_message(self, message):
+        font = pygame.font.SysFont("Arial", 20)
+        text_surface = font.render(message, True, (255, 0, 0))
+        screen_width = self.screen.get_width()
+        text_rect = text_surface.get_rect(center=(screen_width // 2, self.screen.get_height() // 2))
+        self.screen.blit(text_surface, text_rect)
 
     def load(self):
         self.render_enabled = True
@@ -371,7 +412,45 @@ class MazeGame:
             self.won = True
             print("🎉 Congratulations! Level completed!")
             print(f"🎯 Level {current_level_index + 1} complete! Loading next level...")
+            total = total_score + self.level_score
+            if total > self.scores["highest_total_score"]:
+                self.scores["player_name"] = self.current_player
+                self.scores["highest_total_score"] = total
+                self.scores["levels_completed"] = list(range(1, current_level_index + 2))  # include next level
+
+                self.scores["collectibles"]["stars"] = self.stars_collected
+                self.scores["collectibles"]["coins"] = self.coins_collected
+                self.scores["collectibles"]["cherries"] = self.cherries_collected
+
+                self.save_scores()
             self.next_level()  # letting this to be called by the user
+
+    # bottom info
+    def draw_bottom_info(self):
+        pygame.draw.rect(self.screen, (0, 30, 30), (125, 550, 550, 80))  # larger box
+        font = pygame.font.SysFont("Arial", 20)
+        text = (f"Player: {self.current_player} | "
+                f"Highest Scorer: {self.scores['player_name']} | Highest Score: {self.scores['highest_total_score']}")
+        text_surface = font.render(text, True, (255, 255, 255))
+        screen_width = self.screen.get_width()
+        text_rect = text_surface.get_rect(center=(screen_width // 2, self.screen.get_height() - 20))
+        self.screen.blit(text_surface, text_rect)
+
+        # Collectible icons and counts
+        x_start = screen_width // 2 - 60
+        y = self.screen.get_height() - 50
+        self.screen.blit(self.icon_star, (x_start, y))
+        self.screen.blit(self.icon_coin, (x_start + 50, y))
+        self.screen.blit(self.icon_cherry, (x_start + 100, y))
+
+
+        star_count = font.render(str(self.scores['collectibles']['stars']), True, (255, 255, 255))
+        coin_count = font.render(str(self.scores['collectibles']['coins']), True, (255, 255, 255))
+        cherry_count = font.render(str(self.scores['collectibles']['cherries']), True, (255, 255, 255))
+
+        self.screen.blit(star_count, (x_start + 25, y))
+        self.screen.blit(coin_count, (x_start + 75, y))
+        self.screen.blit(cherry_count, (x_start + 125, y))
 
     def next_level(self):
         '''global current_level_index, current_maze
