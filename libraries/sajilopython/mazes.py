@@ -288,10 +288,10 @@ class MazeGame:
     # player name check
     def player_name(self, name):
         if name == self.scores["player_name"]:
-            print("⚠️ This name already holds the highest score! Please choose a different name.")
+            print("⚠ This name already holds the highest score! Please choose a different name.")
             return
         if name.strip() == "":
-            print("⚠️ Player name cannot be empty!")
+            print("⚠ Player name cannot be empty!")
             return
         self.current_player = name
 
@@ -381,17 +381,17 @@ class MazeGame:
                     self.check_collectibles(next_x, next_y)
                     self.check_goal(next_x, next_y)
                     print(f"Moving Forward to ({next_x}, {next_y}), cell={self.maze_map[next_y][next_x]}")
-                    self.move_sound.play()  # ✅ play boing sound
+                    self.move_sound.play()  #  play boing sound
 
     def turn_left(self):
         self.character_direction = (self.character_direction - 1) % 4
         print("Turning Left")
-        self.turn_sound.play()  # ✅ play drop sound
+        self.turn_sound.play()  #  play drop sound
 
     def turn_right(self):
         self.character_direction = (self.character_direction + 1) % 4
         print("Turning Right")
-        self.turn_sound.play()  # ✅ play drop sound
+        self.turn_sound.play()  #  play drop sound
 
     def check_collectibles(self, player_x, player_y):
         collected = None
@@ -415,8 +415,8 @@ class MazeGame:
         if (player_x, player_y) == self.end_pos and not self.won:
             win_sound.play()
             self.won = True
-            print("🎉 Congratulations! Level completed!")
-            print(f"🎯 Level {current_level_index + 1} complete! Loading next level...")
+            print("Congratulations! Level completed!")
+            print(f"Level {current_level_index + 1} complete! Loading next level...")
             total = total_score + self.level_score
             if total > self.scores["highest_total_score"]:
                 self.scores["player_name"] = self.current_player
@@ -465,15 +465,15 @@ class MazeGame:
         if current_level_index < len(all_mazes):
             current_maze = load_maze(all_mazes[current_level_index])
         else:
-            print("🎉 All levels complete!")'''
+            print("All levels complete!")'''
         if not self.won:
-            print("❌ You must finish the current level before moving on!")
+            print("X You must finish the current level before moving on!")
             return
         global total_score, current_level_index, all_mazes, current_maze
         total_score += self.get_score()
         current_level_index += 1
         if current_level_index >= len(all_mazes):
-            print("🏆 All levels completed! Final Score:", total_score)
+            print("All levels completed! Final Score:", total_score)
             return
         #current_maze = MazeGame(all_mazes[current_level_index])
         self.maze_map = all_mazes[current_level_index]  # loading map for the next level
@@ -483,7 +483,7 @@ class MazeGame:
         self.visited_tiles.add(self.start_pos)'''
         self.reset()
         self.load()
-        print(f"➡️ Welcome to Level {current_level_index + 1}!")
+        print(f"➡ Welcome to Level {current_level_index + 1}!")
 
     def reset(self):
         self.character_x, self.character_y = self.start_pos
@@ -547,12 +547,12 @@ def load_maze(maze, render=True):
 def next_level():
     global current_level_index, current_maze, total_score
     if not current_maze.has_won():
-        print("❌ You must finish the current level before moving on!")
+        print("X You must finish the current level before moving on!")
         return
     total_score += current_maze.get_score()
     current_level_index += 1
     if current_level_index >= len(all_mazes):
-        print("🏆 All levels completed! Final Score:", total_score)
+        print("All levels completed! Final Score:", total_score)
         return
     current_maze = MazeGame(all_mazes[current_level_index], current_maze.screen)
-    print(f"➡️ Welcome to Level {current_level_index + 1}!")
+    print(f"➡ Welcome to Level {current_level_index + 1}!")
