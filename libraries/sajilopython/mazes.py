@@ -1,5 +1,25 @@
+"""
+------------------------------------------------------------------------------
+Maze SubLibrary for SajiloPython
+Author       : Sudip Vikram Adhikari
+Company      : Beyond Apogee
+Description  : This module provides the MazeGame class and related functions
+               for loading, running, and tracking maze-based coding challenges
+               in the SajiloPython framework.
 
-# ---- SajiloPython Maze System with Levels, Scoreboard, Anti-Cheat ----
+Short Desc   : Maze engine with levels, collectibles, player progress, and score tracking.
+
+Features     :
+- Multiple maze levels with walls, paths, start/end points.
+- Collectibles system (stars, coins, cherries).
+- Command queue system for student-controlled movements.
+- Player name registration with high-score protection.
+- JSON file storage for player records and scores.
+- Sound effects and dynamic graphics.
+
+License      : MIT License
+------------------------------------------------------------------------------
+"""
 
 import pygame
 import os
